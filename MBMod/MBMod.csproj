@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- net35-compatible builds; needed by ArchipelagoClient.cs -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="WebSocketSharp" Version="1.0.3-rc11" />
   </ItemGroup>
@@ -24,9 +25,9 @@
       <HintPath>../mathbreakers/Mathbreakers_Data/Managed/UnityEngine.dll</HintPath>
     </Reference>
 
-    <Reference Include="Assembly-CSharp">
-      <HintPath>../mathbreakers/Mathbreakers_Data/Managed/Assembly-CSharp.dll</HintPath>
-    </Reference>
+    <!-- Framework assembly (GAC), needed by TextRasterizer.cs to render
+         text as bitmaps, bypassing Unity's/Cocos's broken font systems. -->
+    <Reference Include="System.Drawing" />
   </ItemGroup>
 
 </Project>

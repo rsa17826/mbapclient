@@ -5,14 +5,12 @@ using System.Reflection;
 using BepInEx;
 using HarmonyLib;
 using UnityEngine;
-using ArchipelagoNet;
 
 [BepInPlugin("nyix.mathbreakers.saves", "Mathbreakers Save Test", "1.0.0")]
 public class MBMod : BaseUnityPlugin
 {
     // Levels currently unlocked by our mod.
     private static readonly HashSet<int> UnlockedLevels = new HashSet<int>();
-private APUIBridge _uiBridge;
 
     private static ManualLogSource Log;
 
@@ -73,16 +71,12 @@ private APUIBridge _uiBridge;
             Log.LogInfo("Patched PlayerPrefs.HasKey");
         }
 
+        // Start with level 1 unlocked, just like the game's
+        // DefaultPlayerPrefs() did.
+        UnlockedLevels.Add(1);
 
-    _uiBridge = new APUIBridge();
-    _uiBridge.Start();
-
-    // Start with level 1 unlocked.
-    UnlockedLevels.Add(1);
-
-    Log.LogInfo("Mathbreakers Save Test loaded!");
-}
-
+        Log.LogInfo("Mathbreakers Save Test loaded!");
+    }
 
     /*
      * Intercepts:
