@@ -84,6 +84,19 @@ if (createNewWall != null)
     );
     Log.LogInfo("Patched NumberWallCreator.CreateNewWall");
 }
+MethodInfo modifyNumber = AccessTools.Method(
+    AccessTools.TypeByName("NumberManager"),
+    "ModifyNumber"
+);
+
+if (modifyNumber != null)
+{
+    harmony.Patch(
+        modifyNumber,
+        prefix: new HarmonyMethod(typeof(MBMod), nameof(ModifyNumberPrefix))
+    );
+    Log.LogInfo("Patched NumberManager.ModifyNumber");
+}
         var uiObj = new GameObject("APConnectUI");
         UnityEngine.Object.DontDestroyOnLoad(uiObj);
         var ui = uiObj.AddComponent<APConnectUI>();
@@ -116,20 +129,58 @@ if (createNewWall != null)
         // to load on this very old Unity/Mono runtime.
         Invoke("SelfTestWebSocketSharp", 2.1f);
     }
+    private static void ModifyNumberPrefix(UnityEngine.GameObject numberObject, object newFrac)
+{
+    if (numberObject == null || newFrac == null) return;
+
+    // Check if the numerator field of the Fraction object is 0 via reflection
+    var numField = newFrac.GetType().GetField("numerator");
+    if (numField != null && (int)numField.GetValue(newFrac) == 0)
+    {
+        var component = numberObject.GetComponent("NumberInfo");
+        if (component != null)
+        {
+            var destroyField = component.GetType().GetField("destroyIfZero");
+            bool destroyIfZero = destroyField != null && (bool)destroyField.GetValue(component);
+
+            if (destroyIfZero)
+            {
+                var parent = numberObject.transform.parent;
+                if (parent != null)
+                {
+                    var wallCreator = parent.GetComponent("NumberWallCreator");
+                    if (wallCreator != null)
+                    {
+                        string wallId = GetWallUniqueId(wallCreator as UnityEngine.Component);
+                        Debug.Log("[MBMod] Zeroed-out brick belonged to wall ID: " + wallId);
+                    }
+                }
+            }
+        }
+    }
+}
 private static bool NumberWallCreatorPrefix(object __instance)
 {
     var mb = __instance as UnityEngine.MonoBehaviour;
     if (mb == null) return true;
 
+    string wallUniqueId = GetWallUniqueId(mb);
+    Debug.Log("[MBMod] Unique Wall ID: " + wallUniqueId);
+
+    return true;
+}
+private static string GetWallUniqueId(UnityEngine.Component mb)
+{
+    if (mb == null) return "UnknownWall";
+
     string wallName = mb.gameObject.name;
     Vector3 pos = mb.transform.position;
+    int siblingIndex = GetSiblingIndexSafe(mb.transform);
     int currentLevel = Application.loadedLevel;
 
-    // Base unique ID
-    string wallUniqueId = string.Format("Level_{0}_{1}_pos_{2:F1}_{3:F1}_{4:F1}",
-        currentLevel, wallName, pos.x, pos.y, pos.z);
+    string wallUniqueId = string.Format("Level_{0}_{1}_idx_{2}_pos_{3:F3}_{4:F3}_{5:F3}",
+        currentLevel, wallName, siblingIndex, pos.x, pos.y, pos.z);
 
-    // If it's a round wall creator, append its unique dimensional fields
     var type = mb.GetType();
     if (type.Name.Contains("Round"))
     {
@@ -146,9 +197,7 @@ private static bool NumberWallCreatorPrefix(object __instance)
         wallUniqueId += string.Format("_rad_{0}_thick_{1}_deg_{2}_h_{3}", radius, thickness, degrees, height);
     }
 
-    Debug.Log("[MBMod] Unique Wall ID: " + wallUniqueId);
-
-    return true;
+    return wallUniqueId;
 }
     private void SelfTestWebSocketSharp()
     {
