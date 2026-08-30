@@ -482,7 +482,7 @@ public class PositiveNegativeLightArea_Patch
         {
             return false;
         }
-        return true;
+        return false;
     }
 }
 
@@ -501,7 +501,7 @@ public class PositiveNegativeLightArea_StayPatch
         {
             return false; // Blocks continuous per-frame light effects while standing inside
         }
-        return true;
+        return false;
     }
 }
 
@@ -524,92 +524,6 @@ public class PositiveNegativeLightArea_CollisionPatch
                 return false;
             }
         }
-        return true;
-    }
-}
-
-[HarmonyPatch]
-public class FPSWalkerEnhanced_Speed_Patch
-{
-    public static MethodInfo TargetMethod()
-    {
-        var type = AccessTools.TypeByName("FPSWalkerEnhanced");
-        return type != null ? AccessTools.Method(type, "Start") : null;
-    }
-
-    public static void Postfix(object __instance)
-    {
-        if (__instance == null) return;
-        var type = __instance.GetType();
-
-        string[] speedFieldNames = { "speed", "walkSpeed", "runSpeed", "moveSpeed", "movementSpeed" };
-        foreach (var fieldName in speedFieldNames)
-        {
-            var field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            if (field != null && field.FieldType == typeof(float))
-            {
-                float val = (float)field.GetValue(__instance);
-                field.SetValue(__instance, val * 4f);
-                Debug.Log(string.Format("[MBMod] Quadrupled FPSWalkerEnhanced.{0} from {1} to {2}", fieldName, val, val * 4f));
-            }
-        }
-    }
-}
-
-[HarmonyPatch]
-public class FPSWalkerEnhanced_Jetpack_Patch
-{
-    public static MethodInfo TargetMethod()
-    {
-        var type = AccessTools.TypeByName("FPSWalkerEnhanced");
-        return type != null ? AccessTools.Method(type, "Jetpack") : null;
-    }
-
-    public static void Postfix(object __instance)
-    {
-        if (__instance == null) return;
-        var type = __instance.GetType();
-        var field = type.GetField("moveDirection", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        if (field != null)
-        {
-            Vector3 moveDir = (Vector3)field.GetValue(__instance);
-            moveDir.y *= 4f; // Scales the hardcoded 60f jetpack boost by 4x
-            field.SetValue(__instance, moveDir);
-            Debug.Log(string.Format("[MBMod] Quadrupled Jetpack vertical speed to {0}", moveDir.y));
-        }
-    }
-}
-
-
-[HarmonyPatch]
-public class FPSWalkerEnhanced_DynamicSpeed_Patch
-{
-    private static bool hasScaled = false;
-
-    public static MethodInfo TargetMethod()
-    {
-        var type = AccessTools.TypeByName("FPSWalkerEnhanced");
-        return type != null ? AccessTools.Method(type, "Update") : null;
-    }
-
-    public static void Prefix(object __instance)
-    {
-        if (__instance == null || hasScaled) return;
-
-        var type = __instance.GetType();
-        string[] fields = { "walkSpeed", "runSpeed", "jumpSpeed", "slideSpeed" };
-
-        foreach (var fieldName in fields)
-        {
-            var field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.Instance);
-            if (field != null && field.FieldType == typeof(float))
-            {
-                float val = (float)field.GetValue(__instance);
-                field.SetValue(__instance, val * 4f);
-                Debug.Log(string.Format("[MBMod] Scaled FPSWalkerEnhanced.{0} from {1} to {2}", fieldName, val, val * 4f));
-            }
-        }
-
-        hasScaled = true;
+        return false;
     }
 }
