@@ -86,7 +86,15 @@ if (createNewWall != null)
 }
 MethodInfo modifyNumber = AccessTools.Method(
     AccessTools.TypeByName("NumberManager"),
-    "ModifyNumber"
+    "ModifyNumber",
+    new Type[] {
+        typeof(UnityEngine.GameObject),
+        AccessTools.TypeByName("Fraction"),
+        typeof(bool),
+        AccessTools.TypeByName("OperationType"),
+        typeof(bool),
+        typeof(string)
+    }
 );
 
 if (modifyNumber != null)
@@ -95,7 +103,11 @@ if (modifyNumber != null)
         modifyNumber,
         prefix: new HarmonyMethod(typeof(MBMod), nameof(ModifyNumberPrefix))
     );
-    Log.LogInfo("Patched NumberManager.ModifyNumber");
+    Log.LogInfo("Patched NumberManager.ModifyNumber (Strict Signature)");
+}
+else
+{
+    Log.LogError("Could not find the specific ModifyNumber overload!");
 }
         var uiObj = new GameObject("APConnectUI");
         UnityEngine.Object.DontDestroyOnLoad(uiObj);
@@ -129,8 +141,20 @@ if (modifyNumber != null)
         // to load on this very old Unity/Mono runtime.
         Invoke("SelfTestWebSocketSharp", 2.1f);
     }
-    private static void ModifyNumberPrefix(UnityEngine.GameObject numberObject, object newFrac)
+    private static void ModifyNumberPrefix(object[] __args)
 {
+    // 1. Use the BepInEx logger to guarantee it shows up in the console
+    Log.LogInfo("[asdasdasdasd: ModifyNumberPrefix triggered!");
+
+    // 2. Safely check if we have the expected number of arguments
+    if (__args == null || __args.Length < 2) return;
+
+    // 3. Extract the arguments using the __args array
+    // __args[0] is GameObject numberObject
+    // __args[1] is Fraction newFrac
+    var numberObject = __args[0] as UnityEngine.GameObject;
+    var newFrac = __args[1];
+
     if (numberObject == null || newFrac == null) return;
 
     // Check if the numerator field of the Fraction object is 0 via reflection
@@ -152,7 +176,7 @@ if (modifyNumber != null)
                     if (wallCreator != null)
                     {
                         string wallId = GetWallUniqueId(wallCreator as UnityEngine.Component);
-                        Debug.Log("[MBMod] Zeroed-out brick belonged to wall ID: " + wallId);
+                        Log.LogInfo("[MBMod] Zeroed-out brick belonged to wall ID: " + wallId);
                     }
                 }
             }
