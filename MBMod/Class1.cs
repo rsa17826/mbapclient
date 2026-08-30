@@ -12,6 +12,7 @@ public class MBMod : BaseUnityPlugin
 {
     // Levels currently unlocked by our mod.
     private static readonly HashSet<int> UnlockedLevels = new HashSet<int>();
+private APUIBridge _uiBridge;
 
     private static ManualLogSource Log;
 
@@ -71,23 +72,17 @@ public class MBMod : BaseUnityPlugin
 
             Log.LogInfo("Patched PlayerPrefs.HasKey");
         }
-        var uiObj = new GameObject("APConnectUI");
-        UnityEngine.Object.DontDestroyOnLoad(uiObj);
-        var ui = uiObj.AddComponent<APConnectUI>();
-        // ui.OnConnectRequested += (hostname, port, game, playerName, password) =>
-        // {
-        //     var client = new ArchipelagoClient(hostname, port, game, playerName, password);
-        //     client.OnLog += msg => Log.LogInfo(msg);
-        //     client.OnError += msg => Log.LogError(msg);
-        //     client.Connect();
-        // };
 
-        // Start with level 1 unlocked, just like the game's
-        // DefaultPlayerPrefs() did.
-        UnlockedLevels.Add(1);
 
-        Log.LogInfo("Mathbreakers Save Test loaded!");
-    }
+    _uiBridge = new APUIBridge();
+    _uiBridge.Start();
+
+    // Start with level 1 unlocked.
+    UnlockedLevels.Add(1);
+
+    Log.LogInfo("Mathbreakers Save Test loaded!");
+}
+
 
     /*
      * Intercepts:

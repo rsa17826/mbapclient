@@ -1,0 +1,14 @@
+/home/nyix/projects/mbmod/APConnectUI/bin/Debug/net8.0/APConnectUI
+/home/nyix/projects/mbmod/APConnectUI/bin/Debug/net8.0/APConnectUI.deps.json
+/home/nyix/projects/mbmod/APConnectUI/bin/Debug/net8.0/APConnectUI.runtimeconfig.json
+/home/nyix/projects/mbmod/APConnectUI/bin/Debug/net8.0/APConnectUI.dll
+/home/nyix/projects/mbmod/APConnectUI/bin/Debug/net8.0/APConnectUI.pdb
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnectUI.GeneratedMSBuildEditorConfig.editorconfig
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnectUI.AssemblyInfoInputs.cache
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnectUI.AssemblyInfo.cs
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnectUI.csproj.CoreCompileInputs.cache
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnectUI.dll
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/refint/APConnectUI.dll
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnectUI.pdb
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnectUI.genruntimeconfig.cache
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/ref/APConnectUI.dll
