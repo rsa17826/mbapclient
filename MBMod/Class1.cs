@@ -80,7 +80,7 @@ string[] speedFields = {
                     if (field != null && field.FieldType == typeof(Vector3))
                     {
                         Vector3 val = (Vector3)field.GetValue(walker);
-                            field.SetValue(walker, val * 2f);
+                            field.SetValue(walker, val * 4f);
                             Debug.Log(string.Format("[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}", fieldName, val * 4f));
                             modifiedAny = true;
                     }
@@ -149,6 +149,28 @@ string[] speedFields = {
             );
 
             Log.LogInfo("Patched PlayerPrefs.HasKey");
+        }
+
+        MethodInfo lightAreaStart = AccessTools.Method(
+            typeof(PositiveNegativeLightArea),
+            "Start"
+        );
+
+        if (lightAreaStart == null)
+        {
+            Log.LogError("Could not find PositiveNegativeLightArea.Start!");
+        }
+        else
+        {
+            harmony.Patch(
+                lightAreaStart,
+                postfix: new HarmonyMethod(
+                    typeof(PositiveNegativeLightArea_StartPatch),
+                    nameof(PositiveNegativeLightArea_StartPatch.Postfix)
+                )
+            );
+
+            Log.LogInfo("Patched PositiveNegativeLightArea.Start");
         }
 MethodInfo createNewWall = AccessTools.Method(
     AccessTools.TypeByName("NumberWallCreator"),
@@ -219,6 +241,21 @@ if (numberInfoType != null)
             client.OnConnectedEvent += () =>
             {
                 ui.SetStatus("Connected!");
+            };
+            client.OnGiveItem += (itemName, item) =>
+            {
+                // TODO: replace "Light Area Unlock" with whatever your
+                // actual AP item is named once it's defined server-side.
+                if (itemName == "Light Area Unlock")
+                {
+                    ApState.LightAreaUnlocked = true;
+                    foreach (var area in UnityEngine.Object.FindObjectsOfType(typeof(PositiveNegativeLightArea)))
+                    {
+                        var col = MBMod.FindTriggerCollider((PositiveNegativeLightArea)area);
+                        if (col != null) col.enabled = true;
+                    }
+                    Log.LogInfo("[AP] Light Area Unlock received - enabling all PositiveNegativeLightArea colliders.");
+                }
             };
             client.Connect();
         };
@@ -465,65 +502,39 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
 
         return int.TryParse(number, out level);
     }
+    internal static Collider FindTriggerCollider(PositiveNegativeLightArea area)
+{
+    var col = area.GetComponent<Collider>();
+    if (col != null) return col;
+
+    col = area.GetComponentInChildren<Collider>();
+    if (col == null)
+    {
+        Log.LogWarning("[AP] No Collider found on or under '" + area.gameObject.name + "' - can't gate this trigger area.");
+    }
+    return col;
+}
 }
 
-[HarmonyPatch]
-public class PositiveNegativeLightArea_Patch
+/// <summary>
+/// Holds AP-unlock flags that gate gameplay elements (e.g. whether the
+/// positive/negative light-area trigger colliders are currently active).
+/// Set these from your ArchipelagoClient.OnGiveItem handler as the
+/// matching items come in.
+/// </summary>
+public static class ApState
 {
-    public static MethodInfo TargetMethod()
-    {
-        var type = AccessTools.TypeByName("PositiveNegativeLightArea");
-        return type != null ? AccessTools.Method(type, "OnTriggerEnter", new Type[] { typeof(Collider) }) : null;
-    }
-
-    public static bool Prefix(object __instance, Collider col)
-    {
-        if (col != null && (col.tag == "Player" || col.name.Contains("Player")))
-        {
-            return false;
-        }
-        return false;
-    }
+    public static bool LightAreaUnlocked = false;
 }
 
-[HarmonyPatch]
-public class PositiveNegativeLightArea_StayPatch
+public static class PositiveNegativeLightArea_StartPatch
 {
-    public static MethodInfo TargetMethod()
+    public static void Postfix(PositiveNegativeLightArea __instance)
     {
-        var type = AccessTools.TypeByName("PositiveNegativeLightArea");
-        return type != null ? AccessTools.Method(type, "OnTriggerStay", new Type[] { typeof(Collider) }) : null;
-    }
-
-    public static bool Prefix(object __instance, Collider col)
-    {
-        if (col != null && (col.tag == "Player" || col.name.Contains("Player")))
+        var col = MBMod.FindTriggerCollider(__instance);
+        if (col != null)
         {
-            return false; // Blocks continuous per-frame light effects while standing inside
+            col.enabled = ApState.LightAreaUnlocked;
         }
-        return false;
-    }
-}
-
-[HarmonyPatch]
-public class PositiveNegativeLightArea_CollisionPatch
-{
-    public static MethodInfo TargetMethod()
-    {
-        var type = AccessTools.TypeByName("PositiveNegativeLightArea");
-        return type != null ? AccessTools.Method(type, "OnCollisionEnter", new Type[] { typeof(Collision) }) : null;
-    }
-
-    public static bool Prefix(object __instance, Collision collision)
-    {
-        if (collision != null && collision.collider != null)
-        {
-            var col = collision.collider;
-            if (col.tag == "Player" || col.name.Contains("Player"))
-            {
-                return false;
-            }
-        }
-        return false;
     }
 }
