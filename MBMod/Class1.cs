@@ -14,7 +14,37 @@ public class MBMod : BaseUnityPlugin
     private static readonly HashSet<int> UnlockedLevels = new HashSet<int>();
 
     private static ManualLogSource Log;
+public KeyCode DumpKey = KeyCode.F9;
 
+    private void Update()
+    {
+        if (Input.GetKeyDown(DumpKey))
+        {
+            Debug.Log("[NodeDumper] === DUMPING ALL LEVEL NODES ===");
+
+            Transform[] allTransforms = FindObjectsOfType(typeof(Transform)) as Transform[];
+            if (allTransforms != null)
+            {
+                foreach (Transform t in allTransforms)
+                {
+                    if (t == null) continue;
+
+                    Component[] components = t.GetComponents<Component>();
+                    string componentList = "";
+                    foreach (Component comp in components)
+                    {
+                        if (comp != null)
+                        {
+                            componentList += comp.GetType().Name + ", ";
+                        }
+                    }
+
+                    Debug.Log("[NodeDumper] Node: " + t.name + " | Components: [" + componentList + "]");
+                }
+            }
+            Debug.Log("[NodeDumper] === DUMP COMPLETE ===");
+        }
+    }
     private void Awake()
     {
         Log = Logger;
