@@ -79,7 +79,15 @@ public class MBMod : BaseUnityPlugin
         {
             var client = new ArchipelagoClient(hostname, port, game, playerName, password);
             client.OnLog += msg => Log.LogInfo(msg);
-            client.OnError += msg => Log.LogError(msg);
+            client.OnError += msg =>
+            {
+                Log.LogError(msg);
+                ui.SetStatus("Error: " + msg);
+            };
+            client.OnConnectedEvent += () =>
+            {
+                ui.SetStatus("Connected!");
+            };
             client.Connect();
         };
 
@@ -94,22 +102,7 @@ public class MBMod : BaseUnityPlugin
         // whichever of these throws can't take the whole plugin down with
         // it. This isolates which dependency assembly is actually failing
         // to load on this very old Unity/Mono runtime.
-        Invoke("SelfTestNewtonsoft", 2f);
         Invoke("SelfTestWebSocketSharp", 2.1f);
-    }
-
-    private void SelfTestNewtonsoft()
-    {
-        try
-        {
-            var obj = new Newtonsoft.Json.Linq.JObject();
-            obj["x"] = 1;
-            Log.LogInfo("[SelfTest] Newtonsoft.Json OK: " + obj.ToString());
-        }
-        catch (Exception ex)
-        {
-            Log.LogError("[SelfTest] Newtonsoft.Json FAILED: " + ex);
-        }
     }
 
     private void SelfTestWebSocketSharp()

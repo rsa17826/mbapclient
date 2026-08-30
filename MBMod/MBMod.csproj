@@ -21,7 +21,6 @@
          AddComponent, before Awake even runs). 6.0.8 is from the same era
          as this engine and is the version widely used by old Unity
          asset-store plugins/mods for exactly this compatibility reason. -->
-    <PackageReference Include="Newtonsoft.Json" Version="6.0.8" />
     <PackageReference Include="WebSocketSharp" Version="1.0.3-rc11" />
   </ItemGroup>
 
