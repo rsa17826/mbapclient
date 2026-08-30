@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- net35-compatible builds; needed by ArchipelagoClient.cs -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="WebSocketSharp" Version="1.0.3-rc11" />
   </ItemGroup>
@@ -23,6 +22,10 @@
 
     <Reference Include="UnityEngine">
       <HintPath>../mathbreakers/Mathbreakers_Data/Managed/UnityEngine.dll</HintPath>
+    </Reference>
+
+    <Reference Include="Assembly-CSharp">
+      <HintPath>../mathbreakers/Mathbreakers_Data/Managed/Assembly-CSharp.dll</HintPath>
     </Reference>
   </ItemGroup>
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
-cd MBMod &&
+(cd MBMod &&
   dotnet build &&
-  mv bin/Debug/net35/MBMod.dll ../mathbreakers/BepInEx/plugins/MBMod.dll
+  mv bin/Debug/net35/MBMod.dll ../mathbreakers/BepInEx/plugins/MBMod.dll)
+ec=$?
 cd ~/projects/mbmod/
+exit $ec
