@@ -1,14 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net35</TargetFramework>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>disable</Nullable>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="BepInEx">
       <HintPath>../mathbreakers/BepInEx/core/BepInEx.dll</HintPath>
+    </Reference>
+
+    <Reference Include="0Harmony">
+      <HintPath>../mathbreakers/BepInEx/core/0Harmony.dll</HintPath>
     </Reference>
 
     <Reference Include="UnityEngine">
