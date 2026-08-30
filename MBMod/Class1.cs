@@ -278,6 +278,21 @@ if (numberInfoType != null)
                     }
                     Log.LogInfo("[AP] Light Area Unlock received - enabling all PositiveNegativeLightArea colliders.");
                 }
+                else if (itemName == "level:level1"){
+                  UnlockedLevels.Add(1);
+                }
+                else if (itemName == "level:level2"){
+                  UnlockedLevels.Add(2);
+                }
+                else if (itemName == "level:level3"){
+                  UnlockedLevels.Add(3);
+                }
+                else if (itemName == "level:level4"){
+                  UnlockedLevels.Add(4);
+                }
+                else if (itemName == "level:level5"){
+                  UnlockedLevels.Add(5);
+                }
                 else if (itemName == "Multiply Hoop Unlock"
                     || itemName == "Add Hoop Unlock"
                     || itemName == "Exponent Hoop Unlock")
@@ -310,7 +325,7 @@ if (numberInfoType != null)
 
         // Start with level 1 unlocked, just like the game's
         // DefaultPlayerPrefs() did.
-        UnlockedLevels.Add(1);
+
 
         Log.LogInfo("Mathbreakers Save Test loaded!");
 
