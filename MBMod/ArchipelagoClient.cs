@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using WebSocketSharp;
 
 namespace ArchipelagoNet
@@ -11,6 +9,14 @@ namespace ArchipelagoNet
     /// <summary>
     /// A .NET 3.5 / Unity-Mono-compatible port of the JS ArchipelagoClient
     /// (native WebSocket implementation of the Archipelago Network Protocol).
+    ///
+    /// JSON is handled via MiniJSON (plain Dictionary&lt;string, object&gt; /
+    /// List&lt;object&gt;), not Newtonsoft.Json.Linq. Newtonsoft's JObject/
+    /// JArray implement IDynamicMetaObjectProvider (for their dynamic
+    /// property support), which pulls in the .NET DLR - and that fails to
+    /// load entirely on Unity 4.2's very old embedded Mono runtime
+    /// (TypeLoadException as soon as JObject is touched). MiniJSON has no
+    /// such dependency.
     ///
     /// .NET 3.5 has no async/await, no Task, no System.Net.WebSockets, and no
     /// ConcurrentDictionary, so this version is fully event-driven (like the
@@ -21,7 +27,7 @@ namespace ArchipelagoNet
     ///
     /// Requires:
     ///   - websocket-sharp (NuGet: WebSocketSharp, targets net35)
-    ///   - Newtonsoft.Json (NuGet: Newtonsoft.Json, use a 9.x/10.x build for net35)
+    ///   - MiniJson.cs (bundled alongside this file, no external dependency)
     /// </summary>
     public class ArchipelagoClient
     {
@@ -33,10 +39,12 @@ namespace ArchipelagoNet
         public event Action<string> OnWarn;
         public event Action<string> OnError;
         public event Action<string> OnDeathLinkReceived;
-        public event Action<JArray> OnHintsUpdated;
 
-        /// <summary>Fired once per newly-received item: (itemName, itemPayload).</summary>
-        public event Action<string, JToken> OnGiveItem;
+        /// <summary>The raw hint list (List&lt;object&gt;, each entry a Dictionary&lt;string, object&gt;).</summary>
+        public event Action<List<object>> OnHintsUpdated;
+
+        /// <summary>Fired once per newly-received item: (itemName, itemPayload as Dictionary&lt;string, object&gt;).</summary>
+        public event Action<string, Dictionary<string, object>> OnGiveItem;
 
         // ---- Connection config ----
         public string Hostname { get; private set; }
@@ -56,7 +64,7 @@ namespace ArchipelagoNet
         public List<int> CheckedLocations = new List<int>();
         public Dictionary<int, SlotInfo> SlotInfoBySlot = new Dictionary<int, SlotInfo>();
         public List<PlayerInfo> Players = new List<PlayerInfo>();
-        public JObject SlotData = new JObject();
+        public Dictionary<string, object> SlotData = new Dictionary<string, object>();
 
         public Dictionary<string, Dictionary<long, string>> ItemIdToName = new Dictionary<string, Dictionary<long, string>>();
         public Dictionary<string, Dictionary<long, string>> LocationIdToName = new Dictionary<string, Dictionary<long, string>>();
@@ -72,7 +80,7 @@ namespace ArchipelagoNet
         /// <summary>Set this to true once your player/save data has finished loading.
         /// Packets that arrive before that are queued in WaitingPackets.</summary>
         public bool PlayerLoaded = false;
-        public readonly List<JObject> WaitingPackets = new List<JObject>();
+        public readonly List<Dictionary<string, object>> WaitingPackets = new List<Dictionary<string, object>>();
 
         // Locations checked locally but not yet acknowledged by the server.
         // Plain Dictionary + lock, since .NET 3.5 has no ConcurrentDictionary.
@@ -91,7 +99,7 @@ namespace ArchipelagoNet
             Game = game;
             PlayerName = playerName;
             Password = password ?? "";
-            UseWss = true;
+            UseWss = false;
             Url = BuildUrl(UseWss);
         }
 
@@ -113,6 +121,66 @@ namespace ArchipelagoNet
         }
 
         // ---------------------------------------------------------------
+        // Small MiniJSON access helpers (Dictionary<string,object> / List<object>
+        // stand in for JObject/JArray; object stands in for JToken).
+        // ---------------------------------------------------------------
+
+        private static object Get(Dictionary<string, object> obj, string key)
+        {
+            if (obj == null) return null;
+            object v;
+            return obj.TryGetValue(key, out v) ? v : null;
+        }
+
+        private static Dictionary<string, object> AsObj(object o)
+        {
+            return o as Dictionary<string, object>;
+        }
+
+        private static List<object> AsArr(object o)
+        {
+            return o as List<object>;
+        }
+
+        private static string AsStr(object o)
+        {
+            return o == null ? null : o.ToString();
+        }
+
+        private static int AsInt(object o)
+        {
+            return o == null ? 0 : Convert.ToInt32(o);
+        }
+
+        private static long AsLong(object o)
+        {
+            return o == null ? 0 : Convert.ToInt64(o);
+        }
+
+        private static double AsDouble(object o)
+        {
+            return o == null ? 0 : Convert.ToDouble(o);
+        }
+
+        private static List<int> AsIntList(object o)
+        {
+            var arr = AsArr(o);
+            var result = new List<int>();
+            if (arr == null) return result;
+            foreach (var item in arr) result.Add(AsInt(item));
+            return result;
+        }
+
+        private static List<string> AsStringList(object o)
+        {
+            var arr = AsArr(o);
+            var result = new List<string>();
+            if (arr == null) return result;
+            foreach (var item in arr) result.Add(AsStr(item));
+            return result;
+        }
+
+        // ---------------------------------------------------------------
         // Connection lifecycle
         // ---------------------------------------------------------------
 
@@ -131,10 +199,17 @@ namespace ArchipelagoNet
             {
                 try
                 {
-                    var packets = JArray.Parse(e.Data);
-                    foreach (var packet in packets.OfType<JObject>())
+                    var parsed = Json.Deserialize(e.Data) as List<object>;
+                    if (parsed == null)
                     {
-                        HandlePacket(packet);
+                        Error("Expected a JSON array of packets, got something else.");
+                        return;
+                    }
+
+                    foreach (var packetObj in parsed)
+                    {
+                        var packet = AsObj(packetObj);
+                        if (packet != null) HandlePacket(packet);
                     }
                 }
                 catch (Exception ex)
@@ -185,7 +260,7 @@ namespace ArchipelagoNet
 
         public void SendPackets(params object[] packetsArray)
         {
-            var json = JsonConvert.SerializeObject(packetsArray);
+            var json = Json.Serialize(new List<object>(packetsArray));
             Log("SENDING TO SERVER: " + json);
 
             if (_socket != null && _socket.IsAlive)
@@ -202,9 +277,9 @@ namespace ArchipelagoNet
         // Packet routing
         // ---------------------------------------------------------------
 
-        private void HandlePacket(JObject packet)
+        private void HandlePacket(Dictionary<string, object> packet)
         {
-            var cmd = (string)packet["cmd"];
+            var cmd = AsStr(Get(packet, "cmd"));
             switch (cmd)
             {
                 case "RoomInfo": OnRoomInfo(packet); break;
@@ -219,8 +294,8 @@ namespace ArchipelagoNet
                 case "Retrieved": OnRetrieved(packet); break;
                 case "SetReply": OnSetReply(packet); break;
                 case "InvalidPacket":
-                    Error("Archipelago Server rejected payload: type=" + packet["type"] +
-                          ", reason=" + packet["text"] + ", originalCommand=" + packet["original_cmd"]);
+                    Error("Archipelago Server rejected payload: type=" + Get(packet, "type") +
+                          ", reason=" + Get(packet, "text") + ", originalCommand=" + Get(packet, "original_cmd"));
                     break;
                 default:
                     Log("Received unhandled protocol command: " + cmd);
@@ -228,7 +303,7 @@ namespace ArchipelagoNet
             }
         }
 
-        private void OnRoomUpdate(JObject packet)
+        private void OnRoomUpdate(Dictionary<string, object> packet)
         {
             if (!PlayerLoaded)
             {
@@ -238,10 +313,10 @@ namespace ArchipelagoNet
 
             Log("[Archipelago] Room state updated by server.");
 
-            var checkedLocationsToken = packet["checked_locations"];
+            var checkedLocationsToken = Get(packet, "checked_locations");
             if (checkedLocationsToken != null)
             {
-                var checkedLocations = checkedLocationsToken.ToObject<List<int>>();
+                var checkedLocations = AsIntList(checkedLocationsToken);
                 foreach (var loc in checkedLocations)
                 {
                     if (!CheckedLocations.Contains(loc))
@@ -255,66 +330,69 @@ namespace ArchipelagoNet
             if (OnRoomUpdateEvent != null) OnRoomUpdateEvent();
         }
 
-        private void OnRoomInfo(JObject packet)
+        private void OnRoomInfo(Dictionary<string, object> packet)
         {
-            var seedName = (string)packet["seed_name"];
+            var seedName = AsStr(Get(packet, "seed_name"));
             Log("RoomInfo received. Multiworld Seed: " + seedName);
 
-            var connectPayload = new JObject();
+            var version = new Dictionary<string, object>();
+            version["major"] = 0;
+            version["minor"] = 6;
+            version["build"] = 8;
+            version["class"] = "Version";
+
+            var connectPayload = new Dictionary<string, object>();
             connectPayload["cmd"] = "Connect";
             connectPayload["password"] = Password;
             connectPayload["game"] = Game;
             connectPayload["name"] = PlayerName;
             connectPayload["uuid"] = GenerateUUID();
-            var version = new JObject();
-            version["major"] = 0;
-            version["minor"] = 6;
-            version["build"] = 8;
-            version["class"] = "Version";
             connectPayload["version"] = version;
             connectPayload["items_handling"] = 7;
-            connectPayload["tags"] = DeathLinkEnabled ? new JArray("DeathLink") : new JArray();
+            connectPayload["tags"] = DeathLinkEnabled ? new List<object> { "DeathLink" } : new List<object>();
             connectPayload["slot_data"] = true;
 
             Log("Authenticating with server...");
 
-            var getDataPackage = new JObject();
+            var getDataPackage = new Dictionary<string, object>();
             getDataPackage["cmd"] = "GetDataPackage";
-            getDataPackage["games"] = packet["games"];
+            getDataPackage["games"] = Get(packet, "games");
 
             SendPackets(getDataPackage, connectPayload);
         }
 
-        private void OnDataPackage(JObject packet)
+        private void OnDataPackage(Dictionary<string, object> packet)
         {
-            var games = (JObject)(packet["data"] != null ? packet["data"]["games"] : null);
+            var data = AsObj(Get(packet, "data"));
+            var games = data != null ? AsObj(Get(data, "games")) : null;
             if (games == null) return;
 
-            foreach (var gameProp in games.Properties())
+            foreach (var gameEntry in games)
             {
-                var game = gameProp.Name;
-                var gameData = (JObject)gameProp.Value;
+                var game = gameEntry.Key;
+                var gameData = AsObj(gameEntry.Value);
+                if (gameData == null) continue;
 
                 var itemMap = new Dictionary<long, string>();
-                var itemNameToId = (JObject)gameData["item_name_to_id"];
+                var itemNameToId = AsObj(Get(gameData, "item_name_to_id"));
                 if (itemNameToId != null)
                 {
-                    foreach (var p in itemNameToId.Properties())
-                        itemMap[(long)p.Value] = p.Name;
+                    foreach (var p in itemNameToId)
+                        itemMap[AsLong(p.Value)] = p.Key;
                 }
                 ItemIdToName[game] = itemMap;
 
                 var locMap = new Dictionary<long, string>();
-                var locNameToId = (JObject)gameData["location_name_to_id"];
+                var locNameToId = AsObj(Get(gameData, "location_name_to_id"));
                 if (locNameToId != null)
                 {
-                    foreach (var p in locNameToId.Properties())
-                        locMap[(long)p.Value] = p.Name;
+                    foreach (var p in locNameToId)
+                        locMap[AsLong(p.Value)] = p.Key;
                 }
                 LocationIdToName[game] = locMap;
             }
 
-            Log("[Archipelago] Received DataPackage for games: " + string.Join(", ", games.Properties().Select(p => p.Name).ToArray()));
+            Log("[Archipelago] Received DataPackage for games: " + string.Join(", ", games.Keys.ToArray()));
         }
 
         /// <summary>Resolve an item id to its display name, given which slot sent it.</summary>
@@ -329,33 +407,53 @@ namespace ArchipelagoNet
             return "Unknown Item " + game + " - (" + itemId + ")";
         }
 
-        private void OnConnected(JObject packet)
+        private void OnConnected(Dictionary<string, object> packet)
         {
-            Log("Successfully connected! Team: " + packet["team"] + ", Slot ID: " + packet["slot"]);
+            Log("Successfully connected! Team: " + Get(packet, "team") + ", Slot ID: " + Get(packet, "slot"));
 
             IsAuthenticated = true;
             DoneConnecting = true;
-            Team = (int)packet["team"];
-            Slot = (int)packet["slot"];
-            MissingLocations = packet["missing_locations"] != null ? packet["missing_locations"].ToObject<List<int>>() : new List<int>();
-            CheckedLocations = packet["checked_locations"] != null ? packet["checked_locations"].ToObject<List<int>>() : new List<int>();
+            Team = AsInt(Get(packet, "team"));
+            Slot = AsInt(Get(packet, "slot"));
+            MissingLocations = AsIntList(Get(packet, "missing_locations"));
+            CheckedLocations = AsIntList(Get(packet, "checked_locations"));
 
             SlotInfoBySlot.Clear();
-            var slotInfo = (JObject)packet["slot_info"];
+            var slotInfo = AsObj(Get(packet, "slot_info"));
             if (slotInfo != null)
             {
-                foreach (var p in slotInfo.Properties())
+                foreach (var p in slotInfo)
                 {
+                    var entry = AsObj(p.Value);
+                    if (entry == null) continue;
+
                     var si = new SlotInfo();
-                    si.Name = (string)p.Value["name"];
-                    si.Game = (string)p.Value["game"];
-                    si.Type = p.Value["type"] != null ? (int)p.Value["type"] : 0;
-                    SlotInfoBySlot[int.Parse(p.Name)] = si;
+                    si.Name = AsStr(Get(entry, "name"));
+                    si.Game = AsStr(Get(entry, "game"));
+                    si.Type = AsInt(Get(entry, "type"));
+                    SlotInfoBySlot[int.Parse(p.Key)] = si;
                 }
             }
 
-            Players = packet["players"] != null ? packet["players"].ToObject<List<PlayerInfo>>() : new List<PlayerInfo>();
-            SlotData = (JObject)(packet["slot_data"] ?? new JObject());
+            Players.Clear();
+            var playersArr = AsArr(Get(packet, "players"));
+            if (playersArr != null)
+            {
+                foreach (var pObj in playersArr)
+                {
+                    var p = AsObj(pObj);
+                    if (p == null) continue;
+
+                    var info = new PlayerInfo();
+                    info.Team = AsInt(Get(p, "team"));
+                    info.Slot = AsInt(Get(p, "slot"));
+                    info.Alias = AsStr(Get(p, "alias"));
+                    info.Name = AsStr(Get(p, "name"));
+                    Players.Add(info);
+                }
+            }
+
+            SlotData = AsObj(Get(packet, "slot_data")) ?? new Dictionary<string, object>();
 
             if (OnConnectedEvent != null) OnConnectedEvent();
 
@@ -363,10 +461,10 @@ namespace ArchipelagoNet
             RequestHints();
         }
 
-        private void OnConnectionRefused(JObject packet)
+        private void OnConnectionRefused(Dictionary<string, object> packet)
         {
             DoneConnecting = true;
-            Error("Authentication rejected by server. Errors: " + packet["errors"]);
+            Error("Authentication rejected by server. Errors: " + Get(packet, "errors"));
         }
 
         /// <summary>Scout locations to see what item they contain, optionally creating a hint.</summary>
@@ -378,29 +476,31 @@ namespace ArchipelagoNet
                 return;
             }
 
-            var payload = new JObject();
+            var payload = new Dictionary<string, object>();
             payload["cmd"] = "LocationScouts";
-            payload["locations"] = new JArray(locationIds.Cast<object>().ToArray());
+            payload["locations"] = locationIds.Cast<object>().ToList();
             payload["create_as_hint"] = createAsHint;
 
             SendPackets(payload);
         }
 
-        private void OnLocationInfo(JObject packet)
+        private void OnLocationInfo(Dictionary<string, object> packet)
         {
             SlotInfo mySlotInfo;
             var myGame = SlotInfoBySlot.TryGetValue(Slot, out mySlotInfo) ? mySlotInfo.Game : null;
 
-            var locations = (JArray)packet["locations"];
+            var locations = AsArr(Get(packet, "locations"));
             if (locations == null) return;
 
-            foreach (var entryToken in locations)
+            foreach (var entryObj in locations)
             {
-                var entry = (JObject)entryToken;
-                var location = (int)entry["location"];
-                var item = (long)entry["item"];
-                var player = (int)entry["player"];
-                var flags = entry["flags"] != null ? (int)entry["flags"] : 0;
+                var entry = AsObj(entryObj);
+                if (entry == null) continue;
+
+                var location = AsInt(Get(entry, "location"));
+                var item = AsLong(Get(entry, "item"));
+                var player = AsInt(Get(entry, "player"));
+                var flags = AsInt(Get(entry, "flags"));
 
                 var itemName = GetItemName(item, player);
                 string locationName;
@@ -427,32 +527,31 @@ namespace ArchipelagoNet
 
             var time = (DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds;
 
-            var data = new JObject();
+            var data = new Dictionary<string, object>();
             data["time"] = time;
             data["cause"] = cause;
             data["source"] = PlayerName;
 
-            var payload = new JObject();
+            var payload = new Dictionary<string, object>();
             payload["cmd"] = "Bounce";
-            payload["tags"] = new JArray("DeathLink");
+            payload["tags"] = new List<object> { "DeathLink" };
             payload["data"] = data;
 
             SendPackets(payload);
         }
 
-        private void OnBounced(JObject packet)
+        private void OnBounced(Dictionary<string, object> packet)
         {
-            var tagsToken = packet["tags"];
-            var tags = tagsToken != null ? tagsToken.ToObject<List<string>>() : null;
+            var tags = AsStringList(Get(packet, "tags"));
             if (tags == null || !tags.Contains("DeathLink")) return;
             if (!DeathLinkEnabled) return;
 
-            var data = (JObject)packet["data"];
+            var data = AsObj(Get(packet, "data"));
             if (data == null) return;
 
-            var time = data["time"] != null ? (double)data["time"] : 0;
-            var cause = (string)data["cause"];
-            var source = (string)data["source"];
+            var time = AsDouble(Get(data, "time"));
+            var cause = AsStr(Get(data, "cause"));
+            var source = AsStr(Get(data, "source"));
 
             if (_lastDeathLinkReceivedTime == time) return;
             _lastDeathLinkReceivedTime = time;
@@ -472,15 +571,15 @@ namespace ArchipelagoNet
                 return;
             }
 
-            var payload = new JObject();
+            var payload = new Dictionary<string, object>();
             payload["cmd"] = "Say";
             payload["text"] = "!hint " + searchString;
             SendPackets(payload);
         }
 
-        private void OnReceivedItems(JObject packet)
+        private void OnReceivedItems(Dictionary<string, object> packet)
         {
-            var items = (JArray)packet["items"];
+            var items = AsArr(Get(packet, "items"));
             if (items == null) return;
 
             Log("Received packet containing " + items.Count + " items.");
@@ -491,15 +590,17 @@ namespace ArchipelagoNet
                 return;
             }
 
-            var index = (int)packet["index"];
+            var index = AsInt(Get(packet, "index"));
 
             for (int offset = 0; offset < items.Count; offset++)
             {
-                var item = (JObject)items[offset];
+                var item = AsObj(items[offset]);
+                if (item == null) continue;
+
                 ItemCount += 1;
 
-                var itemId = (long)item["item"];
-                var itemPlayer = (int)item["player"];
+                var itemId = AsLong(Get(item, "item"));
+                var itemPlayer = AsInt(Get(item, "player"));
                 var itemName = GetItemName(itemId, Slot);
                 var senderPlayer = Players.FirstOrDefault(p => p.Slot == itemPlayer);
                 var senderName = senderPlayer != null ? senderPlayer.Alias : null;
@@ -532,10 +633,10 @@ namespace ArchipelagoNet
         /// Turns a single JSONMessagePart into displayable text, resolving id-based
         /// parts (player_id / item_id / location_id) to names.
         /// </summary>
-        private string ResolveMessagePart(JObject part)
+        private string ResolveMessagePart(Dictionary<string, object> part)
         {
-            var type = (string)part["type"];
-            var text = (string)part["text"] ?? "";
+            var type = AsStr(Get(part, "type"));
+            var text = AsStr(Get(part, "text")) ?? "";
 
             if (type == "player_id")
             {
@@ -544,7 +645,8 @@ namespace ArchipelagoNet
             }
             if (type == "item_id")
             {
-                var playerSlot = part["player"] != null ? (int)part["player"] : -1;
+                var playerToken = Get(part, "player");
+                var playerSlot = playerToken != null ? AsInt(playerToken) : -1;
                 SlotInfo info;
                 var game = SlotInfoBySlot.TryGetValue(playerSlot, out info) ? info.Game : null;
                 long id;
@@ -556,7 +658,8 @@ namespace ArchipelagoNet
             }
             if (type == "location_id")
             {
-                var playerSlot = part["player"] != null ? (int)part["player"] : -1;
+                var playerToken = Get(part, "player");
+                var playerSlot = playerToken != null ? AsInt(playerToken) : -1;
                 SlotInfo info;
                 var game = SlotInfoBySlot.TryGetValue(playerSlot, out info) ? info.Game : null;
                 long id;
@@ -569,15 +672,16 @@ namespace ArchipelagoNet
             return text;
         }
 
-        private void OnPrintJSON(JObject packet)
+        private void OnPrintJSON(Dictionary<string, object> packet)
         {
-            var data = (JArray)packet["data"];
+            var data = AsArr(Get(packet, "data"));
             if (data == null) return;
 
             var sb = new System.Text.StringBuilder();
-            foreach (var partToken in data)
+            foreach (var partObj in data)
             {
-                sb.Append(ResolveMessagePart((JObject)partToken));
+                var part = AsObj(partObj);
+                if (part != null) sb.Append(ResolveMessagePart(part));
             }
 
             Log("[Archipelago] " + sb.ToString());
@@ -592,9 +696,9 @@ namespace ArchipelagoNet
                 return;
             }
 
-            var payload = new JObject();
+            var payload = new Dictionary<string, object>();
             payload["cmd"] = "LocationChecks";
-            payload["locations"] = new JArray(locationIds.Cast<object>().ToArray());
+            payload["locations"] = locationIds.Cast<object>().ToList();
 
             SendPackets(payload);
         }
@@ -614,7 +718,7 @@ namespace ArchipelagoNet
                 _goalCompleteSent = true;
             }
 
-            var payload = new JObject();
+            var payload = new Dictionary<string, object>();
             payload["cmd"] = "StatusUpdate";
             payload["status"] = status;
             SendPackets(payload);
@@ -633,33 +737,33 @@ namespace ArchipelagoNet
         {
             var key = "_read_hints_" + Team + "_" + Slot;
 
-            var getPayload = new JObject();
+            var getPayload = new Dictionary<string, object>();
             getPayload["cmd"] = "Get";
-            getPayload["keys"] = new JArray(key);
+            getPayload["keys"] = new List<object> { key };
 
-            var notifyPayload = new JObject();
+            var notifyPayload = new Dictionary<string, object>();
             notifyPayload["cmd"] = "SetNotify";
-            notifyPayload["keys"] = new JArray(key);
+            notifyPayload["keys"] = new List<object> { key };
 
             SendPackets(getPayload, notifyPayload);
         }
 
-        private void OnRetrieved(JObject packet)
+        private void OnRetrieved(Dictionary<string, object> packet)
         {
             var key = "_read_hints_" + Team + "_" + Slot;
-            var keys = (JObject)packet["keys"];
-            if (keys != null && keys[key] != null)
+            var keys = AsObj(Get(packet, "keys"));
+            if (keys != null && keys.ContainsKey(key))
             {
-                if (OnHintsUpdated != null) OnHintsUpdated((JArray)(keys[key] ?? new JArray()));
+                if (OnHintsUpdated != null) OnHintsUpdated(AsArr(keys[key]) ?? new List<object>());
             }
         }
 
-        private void OnSetReply(JObject packet)
+        private void OnSetReply(Dictionary<string, object> packet)
         {
             var key = "_read_hints_" + Team + "_" + Slot;
-            if ((string)packet["key"] == key)
+            if (AsStr(Get(packet, "key")) == key)
             {
-                if (OnHintsUpdated != null) OnHintsUpdated((JArray)(packet["value"] ?? new JArray()));
+                if (OnHintsUpdated != null) OnHintsUpdated(AsArr(Get(packet, "value")) ?? new List<object>());
             }
         }
 
@@ -678,10 +782,10 @@ namespace ArchipelagoNet
 
     public class PlayerInfo
     {
-        [JsonProperty("team")] public int Team;
-        [JsonProperty("slot")] public int Slot;
-        [JsonProperty("alias")] public string Alias;
-        [JsonProperty("name")] public string Name;
+        public int Team;
+        public int Slot;
+        public string Alias;
+        public string Name;
     }
 
     public class ScoutedItem
