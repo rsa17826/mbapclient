@@ -37,12 +37,12 @@ public class APConnectUI : MonoBehaviour
     public KeyCode ToggleKey = KeyCode.F8;
     public bool Visible = true;
 
-    private string _host = "ap.localhost";
-    private string _port = "80";
-    private string _game = "Mathbreakers";
-    private string _playerName = "nyix";
-    private string _password = "";
-    private string _status = "";
+        private string _host = "ap.localhost";
+        private string _port = "80";
+        private string _game = "Mathbreakers";
+        private string _playerName = "nyix";
+        private string _password = "";
+        private string _status = "";
 
     private Rect _windowRect = new Rect(20, 20, 340, 220);
 
@@ -118,6 +118,18 @@ public class APConnectUI : MonoBehaviour
         try
         {
             DrawWindowContents();
+        }
+        catch (System.TypeLoadException tex)
+        {
+            if (!_loggedError)
+            {
+                _loggedError = true;
+                // Mono's TypeLoadException.ToString() often omits the one
+                // piece of info that actually says what failed - the name
+                // of the type/assembly it couldn't load - so log it directly.
+                Debug.LogError("[APConnectUI] DrawWindow threw TypeLoadException. TypeName='" +
+                    tex.TypeName + "'. Full: " + tex);
+            }
         }
         catch (System.Exception ex)
         {
