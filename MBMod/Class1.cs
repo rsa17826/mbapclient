@@ -125,6 +125,9 @@ if (numberInfoType != null)
         var uiObj = new GameObject("APConnectUI");
         UnityEngine.Object.DontDestroyOnLoad(uiObj);
         var ui = uiObj.AddComponent<APConnectUI>();
+        var uiObj2 = new GameObject("PlayerCoordsUI");
+        UnityEngine.Object.DontDestroyOnLoad(uiObj2);
+        var ui2 = uiObj2.AddComponent<PlayerCoordsUI>();
         ui.OnConnectRequested += (hostname, port, game, playerName, password) =>
         {
             var client = new ArchipelagoClient(hostname, port, game, playerName, password);
