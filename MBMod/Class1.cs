@@ -19,6 +19,7 @@ public class MBMod : BaseUnityPlugin
     private static readonly HashSet<int> UnlockedLevels = new HashSet<int>();
 
     private static ManualLogSource Log;
+    private static ArchipelagoClient ApClient;
 public KeyCode DumpKey = KeyCode.F9;
 private bool speedBoostApplied = false; // Declare it here
     private void Update()
@@ -254,6 +255,7 @@ if (numberInfoType != null)
         ui.OnConnectRequested += (hostname, port, game, playerName, password) =>
         {
             var client = new ArchipelagoClient(hostname, port, game, playerName, password);
+            ApClient = client;
             client.OnLog += msg => Log.LogInfo(msg);
             client.OnError += msg =>
             {
@@ -277,21 +279,6 @@ if (numberInfoType != null)
                         if (col != null) col.enabled = true;
                     }
                     Log.LogInfo("[AP] Light Area Unlock received - enabling all PositiveNegativeLightArea colliders.");
-                }
-                else if (itemName == "level:level1"){
-                  UnlockedLevels.Add(1);
-                }
-                else if (itemName == "level:level2"){
-                  UnlockedLevels.Add(2);
-                }
-                else if (itemName == "level:level3"){
-                  UnlockedLevels.Add(3);
-                }
-                else if (itemName == "level:level4"){
-                  UnlockedLevels.Add(4);
-                }
-                else if (itemName == "level:level5"){
-                  UnlockedLevels.Add(5);
                 }
                 else if (itemName == "Multiply Hoop Unlock"
                     || itemName == "Add Hoop Unlock"
@@ -325,7 +312,7 @@ if (numberInfoType != null)
 
         // Start with level 1 unlocked, just like the game's
         // DefaultPlayerPrefs() did.
-
+        UnlockedLevels.Add(1);
 
         Log.LogInfo("Mathbreakers Save Test loaded!");
 
@@ -409,6 +396,56 @@ private static void NumberInfoOnDestroyNumberPrefix(UnityEngine.MonoBehaviour __
     }
 
     Log.LogInfo("[MBMod] Block destroyed via NumberInfo.OnDestroyNumber! Wall ID: " + wallId);
+
+    SendNewLocationCheck("level"+Application.loadedLevel+" - wall:" + wallId);
+}
+
+/// <summary>
+/// Port of the JS newItem() location-check guard logic: looks the name up
+/// in slot_data.AP_LOCATION_IDS, skips it if already checked or unmapped,
+/// and sends the LocationChecks packet if the client is authenticated.
+/// </summary>
+private static void SendNewLocationCheck(string name)
+{
+    if (ApClient == null || ApClient.SlotData == null)
+    {
+        Log.LogError("[AP] SendNewLocationCheck: failed to check " + name);
+        return;
+    }
+
+    object idsToken;
+    if (!ApClient.SlotData.TryGetValue("AP_LOCATION_IDS", out idsToken))
+    {
+        Log.LogError("[AP] SendNewLocationCheck: failed to check " + name + " (no AP_LOCATION_IDS in slot_data)");
+        return;
+    }
+
+    var idsMap = idsToken as Dictionary<string, object>;
+    object idToken;
+    int apLocationId;
+    if (idsMap == null || !idsMap.TryGetValue(name, out idToken) || idToken == null)
+    {
+        Log.LogWarning("[Archipelago] Ignored location check (No ID mapped): \"" + name + "\"");
+        return;
+    }
+    apLocationId = Convert.ToInt32(idToken);
+
+    if (ApClient.CheckedLocations.Contains(apLocationId))
+    {
+        Log.LogWarning("[Archipelago] Ignored location check (location already checked): \"" + name + "\"");
+        return;
+    }
+
+    if (ApClient.IsAuthenticated)
+    {
+        Log.LogInfo("[Archipelago] Check registered: " + name + " (ID: " + apLocationId + ")");
+        ApClient.AddToChecksInFlight(apLocationId);
+        ApClient.SendLocationChecks(new[] { apLocationId });
+    }
+    else
+    {
+        Log.LogWarning("[Archipelago] failed to send - Client not authenticated.");
+    }
 }
 private static string GetWallUniqueId(UnityEngine.Component mb)
 {
