@@ -70,7 +70,16 @@ public class MBMod : BaseUnityPlugin
 
             Log.LogInfo("Patched PlayerPrefs.HasKey");
         }
-
+var uiObj = new GameObject("APConnectUI");
+Object.DontDestroyOnLoad(uiObj);
+var ui = uiObj.AddComponent<APConnectUI>();
+ui.OnConnectRequested += (hostname, port, game, playerName, password) =>
+{
+    var client = new ArchipelagoClient(hostname, port, game, playerName, password);
+    client.OnLog += msg => Log.LogInfo(msg);
+    client.OnError += msg => Log.LogError(msg);
+    client.Connect();
+};
         // Start with level 1 unlocked, just like the game's
         // DefaultPlayerPrefs() did.
         UnlockedLevels.Add(1);
