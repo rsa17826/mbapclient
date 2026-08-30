@@ -71,7 +71,19 @@ public class MBMod : BaseUnityPlugin
 
             Log.LogInfo("Patched PlayerPrefs.HasKey");
         }
+MethodInfo createNewWall = AccessTools.Method(
+    AccessTools.TypeByName("NumberWallCreator"),
+    "CreateNewWall"
+);
 
+if (createNewWall != null)
+{
+    harmony.Patch(
+        createNewWall,
+        prefix: new HarmonyMethod(typeof(MBMod), nameof(NumberWallCreatorPrefix))
+    );
+    Log.LogInfo("Patched NumberWallCreator.CreateNewWall");
+}
         var uiObj = new GameObject("APConnectUI");
         UnityEngine.Object.DontDestroyOnLoad(uiObj);
         var ui = uiObj.AddComponent<APConnectUI>();
@@ -104,7 +116,24 @@ public class MBMod : BaseUnityPlugin
         // to load on this very old Unity/Mono runtime.
         Invoke("SelfTestWebSocketSharp", 2.1f);
     }
+    private static bool NumberWallCreatorPrefix(object __instance)
+{
+    var mb = __instance as UnityEngine.MonoBehaviour;
+    if (mb == null) return true;
 
+    string wallName = mb.gameObject.name;
+    Vector3 pos = mb.transform.position;
+    int currentLevel = Application.loadedLevel;
+
+    // Unique ID scoped to the level and specific wall instance
+    string wallUniqueId = string.Format("Level_{0}_{1}_pos_{2:F1}_{3:F1}_{4:F1}",
+        currentLevel, wallName, pos.x, pos.y, pos.z);
+
+    Debug.Log("[MBMod] Unique Wall ID: " + wallUniqueId);
+
+    // true = allow the original CreateNewWall method to run normally
+    return true;
+}
     private void SelfTestWebSocketSharp()
     {
         try

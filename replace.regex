@@ -1,3 +1,9 @@
+
+@file /output_log\.txt$
+@regex (\n)\n+
+@replace $1
+@endregex
+
 @regex private string _host = "archipelago.gg";
 @replace     private string _host = "ap.localhost";
 @endregex
@@ -16,3 +22,11 @@
 @regex private string _status = "";
 @replace     private string _status = "";
 @endregex
+
+
+
+
+
+
+
+
