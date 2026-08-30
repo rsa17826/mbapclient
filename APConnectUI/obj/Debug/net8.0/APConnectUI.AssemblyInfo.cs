@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("APConnectUI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6288f1a1445c9c6e37df462ecee185ee1fdbe29b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4f970dc1b6f9d95373287be2f565c96c8b2d1fa2")]
 [assembly: System.Reflection.AssemblyProductAttribute("APConnectUI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("APConnectUI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

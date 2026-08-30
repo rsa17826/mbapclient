@@ -12,3 +12,6 @@
 /home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnectUI.pdb
 /home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnectUI.genruntimeconfig.cache
 /home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/ref/APConnectUI.dll
+/home/nyix/projects/mbmod/APConnectUI/bin/Debug/net8.0/Newtonsoft.Json.dll
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnectUI.csproj.AssemblyReference.cache
+/home/nyix/projects/mbmod/APConnectUI/obj/Debug/net8.0/APConnec.1181C615.Up2Date
