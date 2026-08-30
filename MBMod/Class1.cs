@@ -71,6 +71,7 @@ public class MBMod : BaseUnityPlugin
 
             Log.LogInfo("Patched PlayerPrefs.HasKey");
         }
+
         var uiObj = new GameObject("APConnectUI");
         UnityEngine.Object.DontDestroyOnLoad(uiObj);
         var ui = uiObj.AddComponent<APConnectUI>();
@@ -87,6 +88,41 @@ public class MBMod : BaseUnityPlugin
         UnlockedLevels.Add(1);
 
         Log.LogInfo("Mathbreakers Save Test loaded!");
+
+        // Deferred (Invoke-delayed) self-test: runs a couple seconds after
+        // startup, well after AddComponent/Awake have already succeeded, so
+        // whichever of these throws can't take the whole plugin down with
+        // it. This isolates which dependency assembly is actually failing
+        // to load on this very old Unity/Mono runtime.
+        Invoke("SelfTestNewtonsoft", 2f);
+        Invoke("SelfTestWebSocketSharp", 2.1f);
+    }
+
+    private void SelfTestNewtonsoft()
+    {
+        try
+        {
+            var obj = new Newtonsoft.Json.Linq.JObject();
+            obj["x"] = 1;
+            Log.LogInfo("[SelfTest] Newtonsoft.Json OK: " + obj.ToString());
+        }
+        catch (Exception ex)
+        {
+            Log.LogError("[SelfTest] Newtonsoft.Json FAILED: " + ex);
+        }
+    }
+
+    private void SelfTestWebSocketSharp()
+    {
+        try
+        {
+            var ws = new WebSocketSharp.WebSocket("ws://127.0.0.1:1");
+            Log.LogInfo("[SelfTest] WebSocketSharp OK: " + ws.GetType().AssemblyQualifiedName);
+        }
+        catch (Exception ex)
+        {
+            Log.LogError("[SelfTest] WebSocketSharp FAILED: " + ex);
+        }
     }
 
     /*

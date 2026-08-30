@@ -14,8 +14,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- net35-compatible builds; needed by ArchipelagoClient.cs -->
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- Unity 4.2.0f4's embedded Mono (CLR 3.0.40818.0) is extremely old -
+         far older than what "net35" NuGet builds actually assume they're
+         compatible with. Newtonsoft.Json 13.x's net35 build uses IL this
+         Mono's verifier can't load at all (TypeLoadException as early as
+         AddComponent, before Awake even runs). 6.0.8 is from the same era
+         as this engine and is the version widely used by old Unity
+         asset-store plugins/mods for exactly this compatibility reason. -->
+    <PackageReference Include="Newtonsoft.Json" Version="6.0.8" />
     <PackageReference Include="WebSocketSharp" Version="1.0.3-rc11" />
   </ItemGroup>
 
