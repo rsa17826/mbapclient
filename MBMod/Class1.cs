@@ -116,7 +116,7 @@ if (createNewWall != null)
         // to load on this very old Unity/Mono runtime.
         Invoke("SelfTestWebSocketSharp", 2.1f);
     }
-    private static bool NumberWallCreatorPrefix(object __instance)
+private static bool NumberWallCreatorPrefix(object __instance)
 {
     var mb = __instance as UnityEngine.MonoBehaviour;
     if (mb == null) return true;
@@ -125,13 +125,29 @@ if (createNewWall != null)
     Vector3 pos = mb.transform.position;
     int currentLevel = Application.loadedLevel;
 
-    // Unique ID scoped to the level and specific wall instance
+    // Base unique ID
     string wallUniqueId = string.Format("Level_{0}_{1}_pos_{2:F1}_{3:F1}_{4:F1}",
         currentLevel, wallName, pos.x, pos.y, pos.z);
 
+    // If it's a round wall creator, append its unique dimensional fields
+    var type = mb.GetType();
+    if (type.Name.Contains("Round"))
+    {
+        var radiusField = type.GetField("radius");
+        var thicknessField = type.GetField("thickness");
+        var degreesField = type.GetField("degreesToComplete");
+        var heightField = type.GetField("height");
+
+        int radius = radiusField != null ? (int)radiusField.GetValue(mb) : 0;
+        int thickness = thicknessField != null ? (int)thicknessField.GetValue(mb) : 0;
+        int degrees = degreesField != null ? (int)degreesField.GetValue(mb) : 360;
+        int height = heightField != null ? (int)heightField.GetValue(mb) : 4;
+
+        wallUniqueId += string.Format("_rad_{0}_thick_{1}_deg_{2}_h_{3}", radius, thickness, degrees, height);
+    }
+
     Debug.Log("[MBMod] Unique Wall ID: " + wallUniqueId);
 
-    // true = allow the original CreateNewWall method to run normally
     return true;
 }
     private void SelfTestWebSocketSharp()

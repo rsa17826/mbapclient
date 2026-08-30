@@ -2,6 +2,7 @@
 @file /output_log\.txt$
 @regex (\n)\n+
 @replace $1
+@untilfail
 @endregex
 
 @regex private string _host = "archipelago.gg";
@@ -22,6 +23,7 @@
 @regex private string _status = "";
 @replace     private string _status = "";
 @endregex
+
 
 
 
