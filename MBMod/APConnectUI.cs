@@ -37,16 +37,16 @@ public class APConnectUI : MonoBehaviour
     public KeyCode ToggleKey = KeyCode.F8;
     public bool Visible = true;
 
-    private string _host = "archipelago.gg";
-    private string _port = "38281";
+    private string _host = "ap.localhost";
+    private string _port = "80";
     private string _game = "Mathbreakers";
-    private string _playerName = "";
+    private string _playerName = "nyix";
     private string _password = "";
     private string _status = "";
 
     private Rect _windowRect = new Rect(20, 20, 340, 220);
 
-    private const int FontSize = 14;
+    private const int FontScale = 2; // each glyph renders at 5x7 pixels times this
     private static readonly Color TextColor = Color.white;
 
     // Transparent style for the real input controls: no visible (broken)
@@ -91,7 +91,19 @@ public class APConnectUI : MonoBehaviour
     {
         if (!Visible) return;
 
-        EnsureStyles();
+        try
+        {
+            EnsureStyles();
+        }
+        catch (System.Exception ex)
+        {
+            if (!_loggedError)
+            {
+                _loggedError = true;
+                Debug.LogError("[APConnectUI] EnsureStyles threw: " + ex);
+            }
+            return;
+        }
 
         // Pass an empty title - the title bar's own text is drawn through
         // the same broken font pipeline, so we render our own label inside
@@ -99,7 +111,28 @@ public class APConnectUI : MonoBehaviour
         _windowRect = GUI.Window(GetInstanceID(), _windowRect, DrawWindow, "", _windowStyle);
     }
 
+    private bool _loggedError = false;
+
     private void DrawWindow(int id)
+    {
+        try
+        {
+            DrawWindowContents();
+        }
+        catch (System.Exception ex)
+        {
+            // GUI.Window callback exceptions are easy to lose (they can
+            // abort mid-frame without a clear log entry), so force this
+            // into the log explicitly the first time it happens.
+            if (!_loggedError)
+            {
+                _loggedError = true;
+                Debug.LogError("[APConnectUI] DrawWindow threw: " + ex);
+            }
+        }
+    }
+
+    private void DrawWindowContents(int _ = 0)
     {
         DrawText(new Rect(10, 4, 300, 18), "Connect to Archipelago");
 
@@ -137,14 +170,14 @@ public class APConnectUI : MonoBehaviour
 
     private void DrawText(Rect rect, string text)
     {
-        var tex = TextRasterizer.GetTexture(text, FontSize, TextColor);
+        var tex = TextRasterizer.GetTexture(text, FontScale, TextColor);
         var drawRect = new Rect(rect.x, rect.y, Mathf.Min(tex.width, rect.width), rect.height);
         GUI.DrawTexture(drawRect, tex, ScaleMode.ScaleToFit);
     }
 
     private void DrawTextCentered(Rect rect, string text)
     {
-        var tex = TextRasterizer.GetTexture(text, FontSize, TextColor);
+        var tex = TextRasterizer.GetTexture(text, FontScale, TextColor);
         var w = Mathf.Min(tex.width, rect.width);
         var h = Mathf.Min(tex.height, rect.height);
         var drawRect = new Rect(
@@ -164,7 +197,7 @@ public class APConnectUI : MonoBehaviour
             : GUI.TextField(rect, value, _invisibleFieldStyle);
 
         var display = isPassword ? new string('*', newValue.Length) : newValue;
-        var tex = TextRasterizer.GetTexture(string.IsNullOrEmpty(display) ? " " : display, FontSize, TextColor);
+        var tex = TextRasterizer.GetTexture(string.IsNullOrEmpty(display) ? " " : display, FontScale, TextColor);
 
         var textRect = new Rect(
             rect.x + 4,

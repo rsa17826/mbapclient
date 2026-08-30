@@ -24,10 +24,6 @@
     <Reference Include="UnityEngine">
       <HintPath>../mathbreakers/Mathbreakers_Data/Managed/UnityEngine.dll</HintPath>
     </Reference>
-
-    <!-- Framework assembly (GAC), needed by TextRasterizer.cs to render
-         text as bitmaps, bypassing Unity's/Cocos's broken font systems. -->
-    <Reference Include="System.Drawing" />
   </ItemGroup>
 
 </Project>
