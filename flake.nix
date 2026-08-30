@@ -22,7 +22,11 @@
       {
         devShells = {
           default = pkgs.mkShell {
-            packages = with pkgs; [ dotnet-sdk_8 ];
+            packages = with pkgs; [
+              dotnet-sdk_8
+              ilspycmd
+              avalonia-ilspy
+            ];
           };
         };
       }
