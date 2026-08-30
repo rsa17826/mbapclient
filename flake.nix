@@ -26,6 +26,7 @@
               dotnet-sdk_8
               ilspycmd
               avalonia-ilspy
+              mono
             ];
           };
         };
