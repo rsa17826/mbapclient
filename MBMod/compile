@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+dotnet build &&
+  mv bin/Debug/net35/MBMod.dll ../mathbreakers/BepInEx/plugins/MBMod.dll

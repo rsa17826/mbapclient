@@ -21,9 +21,8 @@
       in
       {
         devShells = {
-          # Development environment
           default = pkgs.mkShell {
-            packages = with pkgs; [ dotnet-runtime_8 ];
+            packages = with pkgs; [ dotnet-sdk_8 ];
           };
         };
       }
