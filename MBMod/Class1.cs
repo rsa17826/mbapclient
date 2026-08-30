@@ -175,11 +175,10 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
 
     string wallName = mb.gameObject.name;
     Vector3 pos = mb.transform.position;
-    int siblingIndex = GetSiblingIndexSafe(mb.transform);
     int currentLevel = Application.loadedLevel;
 
-    string wallUniqueId = string.Format("Level_{0}_{1}_idx_{2}_pos_{3:F3}_{4:F3}_{5:F3}",
-        currentLevel, wallName, siblingIndex, pos.x, pos.y, pos.z);
+    string wallUniqueId = string.Format("Level_{0}_{1}_pos_{2:F1}_{3:F1}_{4:F1}",
+        currentLevel, wallName, pos.x, pos.y, pos.z);
 
     var type = mb.GetType();
     if (type.Name.Contains("Round"))
