@@ -5,6 +5,7 @@
 @untilfail
 @endregex
 
+@file \.cs$
 @regex private string _host = "archipelago.gg";
 @replace     private string _host = "ap.localhost";
 @endregex
@@ -23,6 +24,17 @@
 @regex private string _status = "";
 @replace     private string _status = "";
 @endregex
+@regex field\.SetValue\(walker, val \* 2f\);
+@replace     field.SetValue(walker, val * 4f);
+@endregex
+
+
+
+
+
+
+
+
 
 
 

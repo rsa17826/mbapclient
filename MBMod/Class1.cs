@@ -80,7 +80,7 @@ string[] speedFields = {
                     if (field != null && field.FieldType == typeof(Vector3))
                     {
                         Vector3 val = (Vector3)field.GetValue(walker);
-                            field.SetValue(walker, val * 4f);
+                                w
                             Debug.Log(string.Format("[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}", fieldName, val * 4f));
                             modifiedAny = true;
                     }
@@ -172,6 +172,28 @@ string[] speedFields = {
 
             Log.LogInfo("Patched PositiveNegativeLightArea.Start");
         }
+
+        MethodInfo numberHoopStart = AccessTools.Method(
+            typeof(NumberHoop),
+            "Start"
+        );
+
+        if (numberHoopStart == null)
+        {
+            Log.LogError("Could not find NumberHoop.Start!");
+        }
+        else
+        {
+            harmony.Patch(
+                numberHoopStart,
+                postfix: new HarmonyMethod(
+                    typeof(NumberHoop_StartPatch),
+                    nameof(NumberHoop_StartPatch.Postfix)
+                )
+            );
+
+            Log.LogInfo("Patched NumberHoop.Start");
+        }
 MethodInfo createNewWall = AccessTools.Method(
     AccessTools.TypeByName("NumberWallCreator"),
     "CreateNewWall"
@@ -244,8 +266,8 @@ if (numberInfoType != null)
             };
             client.OnGiveItem += (itemName, item) =>
             {
-                // TODO: replace "Light Area Unlock" with whatever your
-                // actual AP item is named once it's defined server-side.
+                // TODO: replace these placeholder names with whatever your
+                // actual AP items are named once they're defined server-side.
                 if (itemName == "Light Area Unlock")
                 {
                     ApState.LightAreaUnlocked = true;
@@ -255,6 +277,32 @@ if (numberInfoType != null)
                         if (col != null) col.enabled = true;
                     }
                     Log.LogInfo("[AP] Light Area Unlock received - enabling all PositiveNegativeLightArea colliders.");
+                }
+                else if (itemName == "Multiply Hoop Unlock"
+                    || itemName == "Add Hoop Unlock"
+                    || itemName == "Exponent Hoop Unlock")
+                {
+                    HoopType unlockedType =
+                        itemName == "Multiply Hoop Unlock" ? HoopType.Multiply :
+                        itemName == "Add Hoop Unlock" ? HoopType.Add :
+                        HoopType.Exponent;
+
+                    if (unlockedType == HoopType.Multiply) ApState.HoopMultiplyUnlocked = true;
+                    if (unlockedType == HoopType.Add) ApState.HoopAddUnlocked = true;
+                    if (unlockedType == HoopType.Exponent) ApState.HoopExponentUnlocked = true;
+
+                    // Only enable colliders on hoops matching this specific
+                    // type - other hoop types stay gated on their own item.
+                    foreach (var hoopObj in UnityEngine.Object.FindObjectsOfType(typeof(NumberHoop)))
+                    {
+                        var hoop = (NumberHoop)hoopObj;
+                        if (hoop.ht != unlockedType) continue;
+
+                        var col = MBMod.FindTriggerCollider(hoop);
+                        if (col != null) col.enabled = true;
+                    }
+
+                    Log.LogInfo("[AP] " + itemName + " received - enabling matching NumberHoop colliders.");
                 }
             };
             client.Connect();
@@ -502,15 +550,15 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
 
         return int.TryParse(number, out level);
     }
-    internal static Collider FindTriggerCollider(PositiveNegativeLightArea area)
+    internal static Collider FindTriggerCollider(Component comp)
 {
-    var col = area.GetComponent<Collider>();
+    var col = comp.GetComponent<Collider>();
     if (col != null) return col;
 
-    col = area.GetComponentInChildren<Collider>();
+    col = comp.GetComponentInChildren<Collider>();
     if (col == null)
     {
-        Log.LogWarning("[AP] No Collider found on or under '" + area.gameObject.name + "' - can't gate this trigger area.");
+        Log.LogWarning("[AP] No Collider found on or under '" + comp.gameObject.name + "' - can't gate this trigger area.");
     }
     return col;
 }
@@ -525,6 +573,23 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
 public static class ApState
 {
     public static bool LightAreaUnlocked = false;
+
+    // One flag per HoopType, gating NumberHoop's trigger collider the
+    // same way LightAreaUnlocked gates PositiveNegativeLightArea's.
+    public static bool HoopMultiplyUnlocked = false;
+    public static bool HoopAddUnlocked = false;
+    public static bool HoopExponentUnlocked = false;
+
+    public static bool IsHoopTypeUnlocked(HoopType ht)
+    {
+        switch (ht)
+        {
+            case HoopType.Multiply: return HoopMultiplyUnlocked;
+            case HoopType.Add: return HoopAddUnlocked;
+            case HoopType.Exponent: return HoopExponentUnlocked;
+            default: return false;
+        }
+    }
 }
 
 public static class PositiveNegativeLightArea_StartPatch
@@ -535,6 +600,18 @@ public static class PositiveNegativeLightArea_StartPatch
         if (col != null)
         {
             col.enabled = ApState.LightAreaUnlocked;
+        }
+    }
+}
+
+public static class NumberHoop_StartPatch
+{
+    public static void Postfix(NumberHoop __instance)
+    {
+        var col = MBMod.FindTriggerCollider(__instance);
+        if (col != null)
+        {
+            col.enabled = ApState.IsHoopTypeUnlocked(__instance.ht);
         }
     }
 }
