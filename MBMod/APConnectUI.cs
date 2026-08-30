@@ -2,250 +2,306 @@ using UnityEngine;
 
 public class APConnectUI : MonoBehaviour
 {
-    private static APConnectUI _instance;
+private static APConnectUI _instance;
 
-    private CCText _source;
-    private GameObject _uiRoot;
+private bool _visible = true;
 
-    private CCText _archipelago;
-    private CCText _server;
-    private CCText _port;
-    private CCText _player;
-    private CCText _password;
-    private CCText _connect;
+private string _archipelago = "";
+private string _server = "localhost";
+private string _port = "38281";
+private string _player = "";
+private string _password = "";
 
-    private bool _panelCreated;
+private string _status = "Disconnected";
 
-    private void Awake()
+private Rect _window =
+    new Rect(40f, 40f, 420f, 330f);
+
+private GUIStyle _titleStyle;
+private GUIStyle _labelStyle;
+private GUIStyle _statusStyle;
+
+public static APConnectUI Instance
+{
+    get
     {
-        if (_instance != null && _instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
+        return _instance;
+    }
+}
 
-        _instance = this;
-
-        DontDestroyOnLoad(gameObject);
-
-        Debug.Log(
-            "[APConnectUI] Persistent instance created."
-        );
+private void Awake()
+{
+    if (_instance != null &&
+        _instance != this)
+    {
+        Destroy(gameObject);
+        return;
     }
 
-    private void Update()
-    {
-        /*
-         * Once the panel exists, DO NOT depend on the menu
-         * continuing to exist.
-         *
-         * The AP UI is now completely persistent.
-         */
-        if (_panelCreated)
-            return;
+    _instance = this;
 
-        FindAndCreatePanel();
+    DontDestroyOnLoad(gameObject);
+
+    Debug.Log(
+        "[APConnectUI] Standalone AP UI started."
+    );
+}
+
+private void Start()
+{
+    CreateStyles();
+}
+
+private void CreateStyles()
+{
+    _titleStyle =
+        new GUIStyle(GUI.skin.label);
+
+    _titleStyle.fontSize = 24;
+    _titleStyle.fontStyle =
+        FontStyle.Bold;
+
+    _labelStyle =
+        new GUIStyle(GUI.skin.label);
+
+    _labelStyle.fontSize = 16;
+
+    _statusStyle =
+        new GUIStyle(GUI.skin.label);
+
+    _statusStyle.fontSize = 16;
+
+    _statusStyle.normal.textColor =
+        new Color(
+            0.2f,
+            0.7f,
+            1f,
+            1f
+        );
+}
+
+private void OnGUI()
+{
+    if (!_visible)
+        return;
+
+    /*
+     * Dark translucent background.
+     */
+    GUI.color =
+        new Color(
+            0f,
+            0f,
+            0f,
+            0.85f
+        );
+
+    GUI.Box(
+        _window,
+        ""
+    );
+
+    GUI.color = Color.white;
+
+    GUILayout.BeginArea(
+        new Rect(
+            _window.x + 20f,
+            _window.y + 15f,
+            _window.width - 40f,
+            _window.height - 30f
+        )
+    );
+
+    GUILayout.Label(
+        "ARCHIPELAGO",
+        _titleStyle
+    );
+
+    GUILayout.Space(10f);
+
+    GUILayout.Label(
+        "Server",
+        _labelStyle
+    );
+
+    _server =
+        GUILayout.TextField(
+            _server,
+            GUILayout.Height(28f)
+        );
+
+    GUILayout.Space(6f);
+
+    GUILayout.Label(
+        "Port",
+        _labelStyle
+    );
+
+    _port =
+        GUILayout.TextField(
+            _port,
+            GUILayout.Height(28f)
+        );
+
+    GUILayout.Space(6f);
+
+    GUILayout.Label(
+        "Player",
+        _labelStyle
+    );
+
+    _player =
+        GUILayout.TextField(
+            _player,
+            GUILayout.Height(28f)
+        );
+
+    GUILayout.Space(6f);
+
+    GUILayout.Label(
+        "Password",
+        _labelStyle
+    );
+
+    _password =
+        GUILayout.PasswordField(
+            _password,
+            '*',
+            GUILayout.Height(28f)
+        );
+
+    GUILayout.Space(12f);
+
+    GUILayout.BeginHorizontal();
+
+    if (GUILayout.Button(
+        "CONNECT",
+        GUILayout.Height(35f)
+    ))
+    {
+        Connect();
     }
 
-    private void FindAndCreatePanel()
+    if (GUILayout.Button(
+        "DISCONNECT",
+        GUILayout.Height(35f)
+    ))
     {
-        CCText[] texts =
-            FindObjectsOfType(typeof(CCText)) as CCText[];
-
-        if (texts == null)
-            return;
-
-        for (int i = 0; i < texts.Length; i++)
-        {
-            CCText text = texts[i];
-
-            if (text == null)
-                continue;
-
-            if (!text.gameObject.activeSelf)
-                continue;
-
-            if (text.Text != "Factor Hammer")
-                continue;
-
-            _source = text;
-
-            Debug.Log(
-                "[APConnectUI] Menu source found: Factor Hammer"
-            );
-
-            CreatePersistentPanel();
-
-            return;
-        }
+        Disconnect();
     }
 
-    private void CreatePersistentPanel()
+    GUILayout.EndHorizontal();
+
+    GUILayout.Space(10f);
+
+    GUILayout.Label(
+        "Status: " + _status,
+        _statusStyle
+    );
+
+    GUILayout.EndArea();
+}
+
+private void Connect()
+{
+    Debug.Log(
+        "[APConnectUI] Connect requested."
+    );
+
+    _status = "Connecting...";
+
+    /*
+     * Hook this into your existing
+     * ArchipelagoClient here.
+     */
+    if (ArchipelagoClient.Instance != null)
     {
-        if (_source == null)
-            return;
-
-        /*
-         * Create an independent root.
-         */
-        _uiRoot =
-            new GameObject(
-                "MBMod_AP_UI_ROOT"
-            );
-
-        DontDestroyOnLoad(_uiRoot);
-
-        Debug.Log(
-            "[APConnectUI] Persistent AP UI root created."
+        ArchipelagoClient.Instance.Connect(
+            _server,
+            int.Parse(_port),
+            _player,
+            _password
         );
 
-        /*
-         * Use Factor Hammer only to determine the initial
-         * position and orientation.
-         */
-        Vector3 basePosition =
-            _source.transform.position;
+        _status = "Connecting...";
+    }
+    else
+    {
+        _status =
+            "Archipelago client unavailable.";
 
-        Quaternion rotation =
-            _source.transform.rotation;
-
-        Vector3 scale =
-            _source.transform.lossyScale;
-
-        _archipelago = CreateText(
-            "AP ARCHIPELAGO",
-            basePosition +
-                new Vector3(0f, 1.5f, 0f),
-            rotation,
-            scale
-        );
-
-        _server = CreateText(
-            "AP SERVER",
-            basePosition +
-                new Vector3(0f, 1.0f, 0f),
-            rotation,
-            scale
-        );
-
-        _port = CreateText(
-            "AP PORT",
-            basePosition +
-                new Vector3(0f, 0.5f, 0f),
-            rotation,
-            scale
-        );
-
-        _player = CreateText(
-            "AP PLAYER",
-            basePosition +
-                new Vector3(0f, 0.0f, 0f),
-            rotation,
-            scale
-        );
-
-        _password = CreateText(
-            "AP PASSWORD",
-            basePosition +
-                new Vector3(0f, -0.5f, 0f),
-            rotation,
-            scale
-        );
-
-        _connect = CreateText(
-            "AP CONNECT",
-            basePosition +
-                new Vector3(0f, -1.0f, 0f),
-            rotation,
-            scale
-        );
-
-        _panelCreated = true;
-
-        Debug.Log(
-            "[APConnectUI] Persistent AP panel created."
+        Debug.LogError(
+            "[APConnectUI] ArchipelagoClient.Instance is null."
         );
     }
+}
 
-    private CCText CreateText(
-        string text,
-        Vector3 worldPosition,
-        Quaternion rotation,
-        Vector3 scale)
+private void Disconnect()
+{
+    Debug.Log(
+        "[APConnectUI] Disconnect requested."
+    );
+
+    if (ArchipelagoClient.Instance != null)
     {
-        GameObject clone =
-            (GameObject)Instantiate(
-                _source.gameObject
-            );
-
-        clone.name =
-            "MBMod_AP_" + text;
-
-        /*
-         * Remove the clone from the menu hierarchy.
-         */
-        clone.transform.parent = null;
-
-        /*
-         * The clone itself must also survive scene changes.
-         */
-        DontDestroyOnLoad(clone);
-
-        CCText ccText =
-            (CCText)clone.GetComponent(
-                typeof(CCText)
-            );
-
-        if (ccText == null)
-        {
-            Debug.LogError(
-                "[APConnectUI] Clone has no CCText: " +
-                text
-            );
-
-            Destroy(clone);
-            return null;
-        }
-
-        ccText.Text = text;
-
-        ccText.Color =
-            new Color(
-                0f,
-                0.2f,
-                1f,
-                1f
-            );
-
-        clone.transform.position =
-            worldPosition;
-
-        clone.transform.rotation =
-            rotation;
-
-        /*
-         * Use the original object's scale.
-         */
-        clone.transform.localScale =
-            _source.transform.localScale;
-
-        clone.SetActive(true);
-
-        MeshRenderer renderer =
-            (MeshRenderer)clone.GetComponent(
-                typeof(MeshRenderer)
-            );
-
-        if (renderer != null)
-            renderer.enabled = true;
-
-        Debug.Log(
-            "[APConnectUI] Created persistent text: " +
-            text +
-            " at " +
-            clone.transform.position
-        );
-
-        return ccText;
+        ArchipelagoClient.Instance.Disconnect();
     }
+
+    _status = "Disconnected";
+}
+
+public void SetStatus(
+    string status)
+{
+    _status = status;
+}
+
+public void SetServer(
+    string server)
+{
+    _server = server;
+}
+
+public void SetPort(
+    string port)
+{
+    _port = port;
+}
+
+public void SetPlayer(
+    string player)
+{
+    _player = player;
+}
+
+public void SetPassword(
+    string password)
+{
+    _password = password;
+}
+
+private void Update()
+{
+    /*
+     * F1 toggles the AP window.
+     */
+    if (Input.GetKeyDown(
+        KeyCode.F1))
+    {
+        _visible =
+            !_visible;
+    }
+
+    /*
+     * Escape can hide it without affecting
+     * the game's own menus.
+     */
+    if (Input.GetKeyDown(
+        KeyCode.F2))
+    {
+        _visible = false;
+    }
+}
+
+
 }
