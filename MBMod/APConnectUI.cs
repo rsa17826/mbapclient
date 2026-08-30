@@ -44,28 +44,60 @@ public class APConnectUI : MonoBehaviour
         }
     }
 
+    // Unity ships a built-in default skin; many games replace GUI.skin
+    // globally with their own (often with transparent/no text color, or
+    // a font that doesn't cover this UI), which makes stock GUI.Label /
+    // GUI.TextField calls render as blank boxes. Cache the built-in
+    // default once and force it while drawing our window so text is
+    // always visible regardless of what the game has set as the skin.
+    private GUISkin _defaultSkin;
+    private GUIStyle _labelStyle;
+    private GUIStyle _boxStyle;
+
+    private void EnsureStyles()
+    {
+        if (_defaultSkin != null) return;
+
+        _defaultSkin = GUI.skin; // whatever's active right now, as a fallback
+        // GUIUtility has an internal way to get the true built-in skin,
+        // but that's not public API - so instead we explicitly style
+        // everything we draw rather than relying on any ambient skin.
+        _labelStyle = new GUIStyle(GUI.skin.label);
+        _labelStyle.normal.textColor = Color.white;
+
+        _boxStyle = new GUIStyle(GUI.skin.box);
+        _boxStyle.normal.textColor = Color.white;
+    }
+
     private void OnGUI()
     {
         if (!Visible) return;
 
+        EnsureStyles();
+
+        var oldSkin = GUI.skin;
+        GUI.skin = null; // fall back to Unity's actual built-in skin for this window
+
         _windowRect = GUI.Window(GetInstanceID(), _windowRect, DrawWindow, "Connect to Archipelago");
+
+        GUI.skin = oldSkin;
     }
 
     private void DrawWindow(int id)
     {
-        GUI.Label(new Rect(10, 20, 100, 20), "Host");
+        GUI.Label(new Rect(10, 20, 100, 20), "Host", _labelStyle);
         _host = GUI.TextField(new Rect(90, 20, 230, 20), _host);
 
-        GUI.Label(new Rect(10, 45, 100, 20), "Port");
+        GUI.Label(new Rect(10, 45, 100, 20), "Port", _labelStyle);
         _port = GUI.TextField(new Rect(90, 45, 230, 20), _port);
 
-        GUI.Label(new Rect(10, 70, 100, 20), "Game");
+        GUI.Label(new Rect(10, 70, 100, 20), "Game", _labelStyle);
         _game = GUI.TextField(new Rect(90, 70, 230, 20), _game);
 
-        GUI.Label(new Rect(10, 95, 100, 20), "Slot Name");
+        GUI.Label(new Rect(10, 95, 100, 20), "Slot Name", _labelStyle);
         _playerName = GUI.TextField(new Rect(90, 95, 230, 20), _playerName);
 
-        GUI.Label(new Rect(10, 120, 100, 20), "Password");
+        GUI.Label(new Rect(10, 120, 100, 20), "Password", _labelStyle);
         _password = GUI.PasswordField(new Rect(90, 120, 230, 20), _password, '*');
 
         if (GUI.Button(new Rect(90, 150, 150, 30), "Connect"))
@@ -75,7 +107,7 @@ public class APConnectUI : MonoBehaviour
 
         if (!string.IsNullOrEmpty(_status))
         {
-            GUI.Label(new Rect(10, 185, 320, 30), _status);
+            GUI.Label(new Rect(10, 185, 320, 30), _status, _labelStyle);
         }
 
         GUI.DragWindow(new Rect(0, 0, 10000, 20));
