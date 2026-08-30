@@ -80,7 +80,7 @@ string[] speedFields = {
                     if (field != null && field.FieldType == typeof(Vector3))
                     {
                         Vector3 val = (Vector3)field.GetValue(walker);
-                                w
+                                field.SetValue(walker, val * 4f);
                             Debug.Log(string.Format("[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}", fieldName, val * 4f));
                             modifiedAny = true;
                     }
