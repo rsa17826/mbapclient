@@ -109,6 +109,19 @@ else
 {
     Log.LogError("Could not find the specific ModifyNumber overload!");
 }
+var numberInfoType = AccessTools.TypeByName("NumberInfo");
+if (numberInfoType != null)
+{
+    var onDestroyNumberMethod = AccessTools.Method(numberInfoType, "OnDestroyNumber");
+    if (onDestroyNumberMethod != null)
+    {
+        harmony.Patch(
+            onDestroyNumberMethod,
+            prefix: new HarmonyMethod(typeof(MBMod), nameof(NumberInfoOnDestroyNumberPrefix))
+        );
+        Log.LogInfo("Patched NumberInfo.OnDestroyNumber successfully!");
+    }
+}
         var uiObj = new GameObject("APConnectUI");
         UnityEngine.Object.DontDestroyOnLoad(uiObj);
         var ui = uiObj.AddComponent<APConnectUI>();
@@ -192,6 +205,28 @@ private static bool NumberWallCreatorPrefix(object __instance)
     Debug.Log("[MBMod] Unique Wall ID: " + wallUniqueId);
 
     return true;
+}
+private static void NumberInfoOnDestroyNumberPrefix(UnityEngine.MonoBehaviour __instance)
+{
+    if (__instance == null) return;
+
+    var go = __instance.gameObject;
+    if (go == null) return;
+
+    string wallId = "UnknownWall";
+    var curr = go.transform.parent;
+    while (curr != null)
+    {
+        var wallCreator = curr.GetComponent("NumberWallCreator");
+        if (wallCreator != null)
+        {
+            wallId = GetWallUniqueId(wallCreator as UnityEngine.Component);
+            break;
+        }
+        curr = curr.parent;
+    }
+
+    Log.LogInfo("[MBMod] Block destroyed via NumberInfo.OnDestroyNumber! Wall ID: " + wallId);
 }
 private static string GetWallUniqueId(UnityEngine.Component mb)
 {
