@@ -5,3 +5,5 @@ mathbreakers
 !mathbreakers/mathbreakers.desktop
 !mathbreakers/Mathbreakers.png
 !mathbreakers/.doorstop_versio
+MBMod/bin
+MBMod/obj
