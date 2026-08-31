@@ -1,0 +1,2 @@
+APMod.7z:run ./zipMod
+Mathbreakers.7z:run ./zipBaseMB

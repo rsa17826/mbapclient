@@ -9,3 +9,5 @@ mathbreakers
 **/bin/**
 **/obj
 **/obj/**
+*.7z
+*.zip

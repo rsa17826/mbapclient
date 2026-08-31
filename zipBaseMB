@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+trap 'rm -f ./mb.7z' TERM
+7zz a -mx9 -md64m mb.7z mathbreakers &>/dev/null
+echo ./mb.7z
+
+while :; do
+  sleep 1
+done
