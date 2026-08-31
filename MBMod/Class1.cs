@@ -24,6 +24,18 @@ public KeyCode DumpKey = KeyCode.F9;
 private bool speedBoostApplied = false; // Declare it here
     private void Update()
     {
+        if (Input.GetKeyDown(KeyCode.F10))
+{
+    GameObject egg = GameObject.Find("easter egg");
+    if (egg != null)
+    {
+        Debug.Log(egg.transform.position + " GameObject.Find('easter egg').position");
+    }
+    else
+    {
+        Debug.Log("Easter egg GameObject not found in current scene.");
+    }
+}
         if (Input.GetKeyDown(DumpKey))
         {
             Debug.Log("[NodeDumper] === DUMPING ALL LEVEL NODES ===");
@@ -350,7 +362,7 @@ SendNewLocationCheck("menu - level:level1");
         // Start with level 1 unlocked, just like the game's
         // DefaultPlayerPrefs() did.
         // UnlockedLevels.Add(1);
-
+harmony.PatchAll();
         Log.LogInfo("Mathbreakers Save Test loaded!");
 
         // Deferred (Invoke-delayed) self-test: runs a couple seconds after
@@ -438,7 +450,7 @@ private static void NumberInfoOnDestroyNumberPrefix(UnityEngine.MonoBehaviour __
 }
 
 /// <summary>
-/// Port of the JS newItem() location-check guard logic: looks the name up
+/// Port of the JS SendNewLocationCheck() location-check guard logic: looks the name up
 /// in slot_data.AP_LOCATION_IDS, skips it if already checked or unmapped,
 /// and sends the LocationChecks packet if the client is authenticated.
 /// </summary>
@@ -540,7 +552,46 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
 
             Log.LogInfo(Json.Serialize(UnlockedLevels));
             Log.LogInfo(key);
-        if (!TryGetLevelKey(key, out level))
+            if (key=="WeaponMachineGun"){
+              // 2
+            }
+            if (key=="WeaponRocketLauncher"){
+              // 2
+            }
+            if (key=="WeaponMultiplyCone"){
+              // 2
+            }
+
+
+            if (key=="SnowballWeapon"){
+SendNewLocationCheck("level"+level+" - weapon:SnowballWeapon")
+return false
+            }
+else if (key=="WeaponMachineGun"){
+SendNewLocationCheck("level"+level+" - weapon:WeaponMachineGun")
+return false
+}
+else if (key=="WeaponRocketLauncher"){
+SendNewLocationCheck("level"+level+" - weapon:WeaponRocketLauncher")
+return false
+}
+else if (key=="WeaponSword"){
+SendNewLocationCheck("level"+level+" - weapon:WeaponSword")
+return false
+}
+else if (key=="WeaponMultiplyCone"){
+SendNewLocationCheck("level"+level+" - weapon:WeaponMultiplyCone")
+return false
+}
+else if (key=="WeaponFactorHammer"){
+SendNewLocationCheck("level"+level+" - weapon:WeaponFactorHammer")
+return false
+}
+else if (key=="MagnetWeapon"){
+SendNewLocationCheck("level"+level+" - weapon:MagnetWeapon")
+return false
+}
+        else if (!TryGetLevelKey(key, out level))
         {
             // Not one of our keys.
             // Let Unity handle it normally.
@@ -714,6 +765,23 @@ public static class NumberHoop_StartPatch
         if (col != null)
         {
             col.enabled = ApState.IsHoopTypeUnlocked(__instance.ht);
+        }
+    }
+}
+[HarmonyPatch(typeof(PlayerNumberController), "GiveAllWeaponsCheat")]
+public static class PlayerNumberController_GiveAllWeaponsCheat_Patch
+{
+    public static void Postfix(object __instance)
+    {
+        if (__instance == null) return;
+
+        // Use reflection to invoke GiveWeapon(new SnowballWeapon(), 8) if the method is private/internal
+        var method = __instance.GetType().GetMethod("GiveWeapon", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (method != null)
+        {
+            var snowballWeapon = Activator.CreateInstance(AccessTools.TypeByName("SnowballWeapon"));
+            method.Invoke(__instance, new object[] { snowballWeapon, 8 });
+            Debug.Log("[MBMod] Added SnowballWeapon to GiveAllWeaponsCheat via Harmony Postfix.");
         }
     }
 }

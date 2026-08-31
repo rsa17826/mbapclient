@@ -43,6 +43,22 @@ public class PlayerCoordsUI : MonoBehaviour
             Vector3 pos = playerTransform.position;
             string coordText = string.Format("X: {0:F1}  Y: {1:F1}  Z: {2:F1}", pos.x, pos.y, pos.z);
             DrawText(new Rect(_windowRect.x + 10, _windowRect.y + 36, 200, 20), coordText);
+//             Transform[] allTransforms = FindObjectsOfType(typeof(Transform)) as Transform[];
+// int i = 0;
+// foreach (Transform t in allTransforms)
+// {
+//     if (t != null && t.name == "easter egg")
+//     {
+//         DrawText(
+//             new Rect(_windowRect.x + 10, _windowRect.y + 54 + (18 * i), 200, 20),
+//             string.Format("!X: {0:F1}  Y: {1:F1}  Z: {2:F1}",
+//                 t.position.x,
+//                 t.position.y,
+//                 t.position.z)
+//         );
+//         i++;
+//     }
+// }
         }
         else
         {
