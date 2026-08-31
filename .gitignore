@@ -1,10 +1,10 @@
-mathbreakers
-.direnv
+mathbreakers/*
 !mathbreakers/doorstop_config.ini
 !mathbreakers/user.reg
 !mathbreakers/mathbreakers.desktop
 !mathbreakers/Mathbreakers.png
-!mathbreakers/.doorstop_versio
+!mathbreakers/.doorstop_version
+.direnv
 **/bin
 **/bin/**
 **/obj
