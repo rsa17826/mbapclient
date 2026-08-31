@@ -106,6 +106,26 @@ string[] speedFields = {
         var harmony = new Harmony("nyix.mathbreakers.saves");
 
         // Find UnityEngine.PlayerPrefs methods.
+        MethodInfo numberGeneratorStart = AccessTools.Method(
+    typeof(NumberGenerator),
+    "Start"
+);
+
+if (numberGeneratorStart == null)
+{
+    Log.LogError("Could not find NumberGenerator.Start!");
+}
+else
+{
+    harmony.Patch(
+        numberGeneratorStart,
+        postfix: new HarmonyMethod(
+            typeof(NumberGenerator_StartPatch),
+            nameof(NumberGenerator_StartPatch.Postfix)
+        )
+    );
+    Log.LogInfo("Patched NumberGenerator.Start");
+}
         MethodInfo setInt = AccessTools.Method(
             typeof(PlayerPrefs),
             "SetInt",
@@ -636,7 +656,16 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
     return col;
 }
 }
-
+public static class NumberGenerator_StartPatch
+{
+    public static void Postfix(NumberGenerator __instance)
+    {
+        if (__instance != null)
+        {
+            __instance.fireDelay = 0.1f;
+        }
+    }
+}
 /// <summary>
 /// Holds AP-unlock flags that gate gameplay elements (e.g. whether the
 /// positive/negative light-area trigger colliders are currently active).
