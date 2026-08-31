@@ -553,30 +553,37 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
 
 
             if (key=="SnowballWeapon"){
+              if (value==1)
 SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:SnowballWeapon");
 return true;
             }
 else if (key=="WeaponMachineGun"){
+  if (value==1)
 SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:WeaponMachineGun");
 return true;
 }
 else if (key=="WeaponRocketLauncher"){
+  if (value==1)
 SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:WeaponRocketLauncher");
 return true;
 }
 else if (key=="WeaponSword"){
+  if (value==1)
 SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:WeaponSword");
 return true;
 }
 else if (key=="WeaponMultiplyCone"){
+  if (value==1)
 SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:WeaponMultiplyCone");
 return true;
 }
 else if (key=="WeaponFactorHammer"){
+  if (value==1)
 SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:WeaponFactorHammer");
 return true;
 }
 else if (key=="MagnetWeapon"){
+  if (value==1)
 SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:MagnetWeapon");
 return true;
 }
