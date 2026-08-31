@@ -27,6 +27,7 @@
               ilspycmd
               avalonia-ilspy
               mono
+              csharpier
             ];
           };
         };
