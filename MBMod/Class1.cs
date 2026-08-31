@@ -265,6 +265,8 @@ if (numberInfoType != null)
             client.OnConnectedEvent += () =>
             {
                 ui.SetStatus("Connected!");
+                client.MarkPlayerLoaded(); // TODO
+SendNewLocationCheck("menu - level:level1");
             };
             client.OnGiveItem += (itemName, item) =>
             {
@@ -279,6 +281,21 @@ if (numberInfoType != null)
                         if (col != null) col.enabled = true;
                     }
                     Log.LogInfo("[AP] Light Area Unlock received - enabling all PositiveNegativeLightArea colliders.");
+                }
+                else if (itemName == "level:level1"){
+                  UnlockedLevels.Add(1);
+                }
+                else if (itemName == "level:level2"){
+                  UnlockedLevels.Add(2);
+                }
+                else if (itemName == "level:level3"){
+                  UnlockedLevels.Add(3);
+                }
+                else if (itemName == "level:level4"){
+                  UnlockedLevels.Add(4);
+                }
+                else if (itemName == "level:level5"){
+                  UnlockedLevels.Add(5);
                 }
                 else if (itemName == "Multiply Hoop Unlock"
                     || itemName == "Add Hoop Unlock"
@@ -533,8 +550,6 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
         }
         else
         {
-            UnlockedLevels.Remove(level);
-
             Log.LogInfo(
                 "[SAVE] Level " +
                 level +
