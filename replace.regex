@@ -27,6 +27,10 @@
 @regex field\.SetValue\(walker, val \* 2f\);
 @replace     field.SetValue(walker, val * 4f);
 @endregex
+@regex UseWss = true;
+@replace     UseWss = false;
+@endregex
+
 
 
 

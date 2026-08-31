@@ -312,7 +312,7 @@ if (numberInfoType != null)
 
         // Start with level 1 unlocked, just like the game's
         // DefaultPlayerPrefs() did.
-        UnlockedLevels.Add(1);
+        // UnlockedLevels.Add(1);
 
         Log.LogInfo("Mathbreakers Save Test loaded!");
 
@@ -501,6 +501,8 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
     {
         int level;
 
+            Log.LogInfo(Json.Serialize(UnlockedLevels));
+            Log.LogInfo(key);
         if (!TryGetLevelKey(key, out level))
         {
             // Not one of our keys.
@@ -517,7 +519,11 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
 
         if (value != 0)
         {
-            UnlockedLevels.Add(level);
+          if (level==1)
+          SendNewLocationCheck("menu - level:level"+level);
+          else
+          SendNewLocationCheck("level"+(level-1)+" - level:level"+level);
+            // UnlockedLevels.Add(level);
 
             Log.LogInfo(
                 "[SAVE] Level " +

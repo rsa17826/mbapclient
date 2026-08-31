@@ -82,6 +82,26 @@ namespace ArchipelagoNet
         public bool PlayerLoaded = false;
         public readonly List<Dictionary<string, object>> WaitingPackets = new List<Dictionary<string, object>>();
 
+        /// <summary>Call this once your game/save state is ready to receive
+        /// items and room updates. Anything that arrived before this point
+        /// (queued in WaitingPackets) gets processed immediately.</summary>
+        public void MarkPlayerLoaded()
+        {
+            if (PlayerLoaded) return;
+            PlayerLoaded = true;
+
+            // Copy first: HandlePacket may itself queue new packets into
+            // WaitingPackets if something resets PlayerLoaded mid-drain,
+            // and mutating a list while foreach-ing it throws.
+            var queued = new List<Dictionary<string, object>>(WaitingPackets);
+            WaitingPackets.Clear();
+
+            foreach (var packet in queued)
+            {
+                HandlePacket(packet);
+            }
+        }
+
         // Locations checked locally but not yet acknowledged by the server.
         // Plain Dictionary + lock, since .NET 3.5 has no ConcurrentDictionary.
         private readonly Dictionary<int, byte> _checksInFlight = new Dictionary<int, byte>();
@@ -280,6 +300,7 @@ namespace ArchipelagoNet
         private void HandlePacket(Dictionary<string, object> packet)
         {
             var cmd = AsStr(Get(packet, "cmd"));
+                    Log("asdasdasdasdasd: " + cmd+Json.Serialize(packet));
             switch (cmd)
             {
                 case "RoomInfo": OnRoomInfo(packet); break;
