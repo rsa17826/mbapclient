@@ -1,2 +1,7 @@
-
+mathbreakers
 .direnv
+!mathbreakers/doorstop_config.ini
+!mathbreakers/user.reg
+!mathbreakers/mathbreakers.desktop
+!mathbreakers/Mathbreakers.png
+!mathbreakers/.doorstop_versio
