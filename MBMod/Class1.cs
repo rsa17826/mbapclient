@@ -21,7 +21,6 @@ public class MBMod : BaseUnityPlugin
     private static ManualLogSource Log;
     private static ArchipelagoClient ApClient;
 public KeyCode DumpKey = KeyCode.F9;
-private bool speedBoostApplied = false; // Declare it here
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.F10))
@@ -62,8 +61,6 @@ private bool speedBoostApplied = false; // Declare it here
             }
             Debug.Log("[NodeDumper] === DUMP COMPLETE ===");
         }
-        if (!speedBoostApplied)
-    {
         GameObject player = GameObject.FindWithTag("Player");
         if (player != null)
         {
@@ -75,36 +72,28 @@ string[] speedFields = {
     "speed", "walkSpeed", "runSpeed", "moveSpeed",
     "jumpSpeed", "ySpeed", "gravity"
 };
-                bool modifiedAny = false;
 
+                      if ((float)type.GetField("walkSpeed", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).GetValue(walker)==24f) // Prevent multi-frame stacking
+                        {
                 foreach (var fieldName in speedFields)
                 {
                     var field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                     if (field != null && field.FieldType == typeof(float))
                     {
                         float val = (float)field.GetValue(walker);
-                        if (val > 0f && val < 100f) // Prevent multi-frame stacking
-                        {
                             field.SetValue(walker, val * 7f);
                             Debug.Log(string.Format("[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}", fieldName, val * 4f));
-                            modifiedAny = true;
-                        }
                     }
                     if (field != null && field.FieldType == typeof(Vector3))
                     {
                         Vector3 val = (Vector3)field.GetValue(walker);
                                 field.SetValue(walker, val * 4f);
                             Debug.Log(string.Format("[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}", fieldName, val * 4f));
-                            modifiedAny = true;
                     }
                 }
+                        }
 
-                if (modifiedAny)
-                {
-                    speedBoostApplied = true; // Lock it in so it only runs once per session/spawn
-                }
             }
-        }
     }
     }
     private void Awake()
@@ -564,32 +553,32 @@ private static string GetWallUniqueId(UnityEngine.Component mb)
 
 
             if (key=="SnowballWeapon"){
-SendNewLocationCheck("level"+level+" - weapon:SnowballWeapon")
-return false
+SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:SnowballWeapon");
+return true;
             }
 else if (key=="WeaponMachineGun"){
-SendNewLocationCheck("level"+level+" - weapon:WeaponMachineGun")
-return false
+SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:WeaponMachineGun");
+return true;
 }
 else if (key=="WeaponRocketLauncher"){
-SendNewLocationCheck("level"+level+" - weapon:WeaponRocketLauncher")
-return false
+SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:WeaponRocketLauncher");
+return true;
 }
 else if (key=="WeaponSword"){
-SendNewLocationCheck("level"+level+" - weapon:WeaponSword")
-return false
+SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:WeaponSword");
+return true;
 }
 else if (key=="WeaponMultiplyCone"){
-SendNewLocationCheck("level"+level+" - weapon:WeaponMultiplyCone")
-return false
+SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:WeaponMultiplyCone");
+return true;
 }
 else if (key=="WeaponFactorHammer"){
-SendNewLocationCheck("level"+level+" - weapon:WeaponFactorHammer")
-return false
+SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:WeaponFactorHammer");
+return true;
 }
 else if (key=="MagnetWeapon"){
-SendNewLocationCheck("level"+level+" - weapon:MagnetWeapon")
-return false
+SendNewLocationCheck("level"+Application.loadedLevel+" - weapon:MagnetWeapon");
+return true;
 }
         else if (!TryGetLevelKey(key, out level))
         {
@@ -629,7 +618,7 @@ return false
         }
 
         // false = don't execute the original PlayerPrefs.SetInt().
-        return false;
+        return true;
     }
 
     /*
