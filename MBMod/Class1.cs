@@ -847,3 +847,18 @@ public static class PlayerNumberController_GiveAllWeaponsCheat_Patch
     }
   }
 }
+
+[HarmonyPatch(typeof(Powerup_Transcendental), "OnPlayerTouch")]
+public static class Powerup_Transcendental_Patch
+{
+  public static void Postfix(Powerup_Transcendental __instance)
+  {
+    if (__instance == null)
+      return;
+
+    Debug.Log("[MBMod] Powerup_Transcendental collected!");
+
+    // Example: Send an Archipelago location check when collected
+    SendNewLocationCheck("level" + Application.loadedLevel + " - pi");
+  }
+}
