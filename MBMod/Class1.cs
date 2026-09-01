@@ -856,7 +856,7 @@ public static class Powerup_Transcendental_Patch
     if (__instance == null)
       return;
 
-    Debug.Log("[MBMod] Powerup_Transcendental collected!");
+    Debug.Log("[MBMod] Powerup_Transcendental collected - pi!");
 
     // Example: Send an Archipelago location check when collected
     SendNewLocationCheck("level" + Application.loadedLevel + " - pi");
