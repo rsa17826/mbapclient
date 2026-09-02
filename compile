@@ -50,3 +50,4 @@ with open('$file', 'w') as f:
 done
 
 cd ~/projects/mbmod/ || exit 1
+./f &
