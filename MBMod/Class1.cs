@@ -16,6 +16,7 @@ using UnityEngine;
 public class MBMod : BaseUnityPlugin
 {
   // Levels currently unlocked by our mod.
+  private static readonly bool fast = true;
   private static readonly HashSet<int> UnlockedLevels = new HashSet<int>();
   public static HashSet<string> unlockedWeapons = new HashSet<string>();
 
@@ -64,67 +65,70 @@ public class MBMod : BaseUnityPlugin
       }
       Debug.Log("[NodeDumper] === DUMP COMPLETE ===");
     }
-    // GameObject player = GameObject.FindWithTag("Player");
-    // if (player != null)
-    // {
-    //   // var walker = player.GetComponent("FPSWalkerEnhanced");
-    //   // if (walker != null)
-    //   // {
-    //   //   var type = walker.GetType();
-    //   //   string[] speedFields =
-    //   //   {
-    //   //     "speed",
-    //   //     "walkSpeed",
-    //   //     "runSpeed",
-    //   //     "moveSpeed",
-    //   //     "jumpSpeed",
-    //   //     "ySpeed",
-    //   //     "gravity",
-    //   //   };
+    if (fast)
+    {
+      GameObject player = GameObject.FindWithTag("Player");
+      if (player != null)
+      {
+        var walker = player.GetComponent("FPSWalkerEnhanced");
+        if (walker != null)
+        {
+          var type = walker.GetType();
+          string[] speedFields =
+          {
+            "speed",
+            "walkSpeed",
+            "runSpeed",
+            "moveSpeed",
+            "jumpSpeed",
+            "ySpeed",
+            "gravity",
+          };
 
-    //   //   if (
-    //   //     (float)
-    //   //       type.GetField(
-    //   //           "walkSpeed",
-    //   //           BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-    //   //         )
-    //   //         .GetValue(walker) == 24f
-    //   //   ) // Prevent multi-frame stacking
-    //   //   {
-    //   //     foreach (var fieldName in speedFields)
-    //   //     {
-    //   //       var field = type.GetField(
-    //   //         fieldName,
-    //   //         BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-    //   //       );
-    //   //       if (field != null && field.FieldType == typeof(float))
-    //   //       {
-    //   //         float val = (float)field.GetValue(walker);
-    //   //         field.SetValue(walker, val * 7f);
-    //   //         Debug.Log(
-    //   //           string.Format(
-    //   //             "[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}",
-    //   //             fieldName,
-    //   //             val * 4f
-    //   //           )
-    //   //         );
-    //   //       }
-    //   //       if (field != null && field.FieldType == typeof(Vector3))
-    //   //       {
-    //   //         Vector3 val = (Vector3)field.GetValue(walker);
-    //   //         field.SetValue(walker, val * 4f);
-    //   //         Debug.Log(
-    //   //           string.Format(
-    //   //             "[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}",
-    //   //             fieldName,
-    //   //             val * 4f
-    //   //           )
-    //   //         );
-    //   //       }
-    //   //     }
-    //   //   }
-    //   // }
-    // }
+          if (
+            (float)
+              type.GetField(
+                  "walkSpeed",
+                  BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+                )
+                .GetValue(walker) == 24f
+          ) // Prevent multi-frame stacking
+          {
+            foreach (var fieldName in speedFields)
+            {
+              var field = type.GetField(
+                fieldName,
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+              );
+              if (field != null && field.FieldType == typeof(float))
+              {
+                float val = (float)field.GetValue(walker);
+                field.SetValue(walker, val * 7f);
+                Debug.Log(
+                  string.Format(
+                    "[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}",
+                    fieldName,
+                    val * 4f
+                  )
+                );
+              }
+              if (field != null && field.FieldType == typeof(Vector3))
+              {
+                Vector3 val = (Vector3)field.GetValue(walker);
+                field.SetValue(walker, val * 4f);
+                Debug.Log(
+                  string.Format(
+                    "[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}",
+                    fieldName,
+                    val * 4f
+                  )
+                );
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   private void Awake()
@@ -824,7 +828,9 @@ public static class PlayerNumberController_PlayerHitObject_Patch
     {
       if (!MBMod.unlockedWeapons.Contains(weaponKey))
       {
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weaponCheck:" + hitObj.name);
+        MBMod.SendNewLocationCheck(
+          "level" + Application.loadedLevel + " - weaponCheck:" + hitObj.name
+        );
         Debug.Log(
           "[MBMod] Blocked pickup of "
             + hitObj.name
