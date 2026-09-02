@@ -641,6 +641,7 @@ public class MBMod : BaseUnityPlugin
   {
     int level;
 
+    Log.LogInfo("[SAVE] Game asked for " + key);
     if (!TryGetLevelKey(key, out level))
     {
       // Not one of our keys.
