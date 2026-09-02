@@ -52,11 +52,13 @@ public class PlayerCoordsUI : MonoBehaviour
       if (!gotEgg1 && dist1 < 10)
       {
         MBMod.SendNewLocationCheck("level" + Application.loadedLevel + " - egg:47.3 70.1 641.7");
+        gotEgg1 = true;
       }
       float dist2 = Vector3.Distance(pos, point2);
       if (!gotEgg2 && dist2 < 10)
       {
         MBMod.SendNewLocationCheck("level" + Application.loadedLevel + " - egg:149.7 18.4 906.0");
+        gotEgg2 = true;
       }
 
       string dist1Text = string.Format("Dist to Pt 1: {0:F1}m", dist1);
