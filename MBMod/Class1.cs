@@ -17,6 +17,7 @@ public class MBMod : BaseUnityPlugin
 {
   // Levels currently unlocked by our mod.
   private static readonly HashSet<int> UnlockedLevels = new HashSet<int>();
+  public static HashSet<string> unlockedWeapons = new HashSet<string>();
 
   private static ManualLogSource Log;
   private static ArchipelagoClient ApClient;
@@ -307,8 +308,6 @@ public class MBMod : BaseUnityPlugin
       };
       client.OnGiveItem += (itemName, item) =>
       {
-        // TODO: replace these placeholder names with whatever your
-        // actual AP items are named once they're defined server-side.
         if (itemName == "Light Area Unlock")
         {
           ApState.LightAreaUnlocked = true;
@@ -344,6 +343,7 @@ public class MBMod : BaseUnityPlugin
         {
           UnlockedLevels.Add(5);
         }
+        else if (itemName == "trap:nothing") { }
         else if (
           itemName == "Multiply Hoop Unlock"
           || itemName == "Add Hoop Unlock"
@@ -377,6 +377,22 @@ public class MBMod : BaseUnityPlugin
 
           Log.LogInfo("[AP] " + itemName + " received - enabling matching NumberHoop colliders.");
         }
+        else if (
+          itemName == "weapon:WeaponMachineGun"
+          || itemName == "weapon:WeaponFactorHammer"
+          || itemName == "weapon:WeaponSword"
+          || itemName == "weapon:WeaponMultiplyCone"
+          || itemName == "weapon:WeaponRocketLauncher"
+        )
+        {
+          unlockedWeapons.Add(itemName);
+          Log.LogInfo("[AP] " + itemName + " received - ");
+          Log.LogInfo(unlockedWeapons);
+        }
+        else
+        {
+          Log.LogError(itemName + "itemName not used!!!");
+        }
       };
       client.Connect();
     };
@@ -386,13 +402,6 @@ public class MBMod : BaseUnityPlugin
     // UnlockedLevels.Add(1);
     harmony.PatchAll();
     Log.LogInfo("Mathbreakers Save Test loaded!");
-
-    // Deferred (Invoke-delayed) self-test: runs a couple seconds after
-    // startup, well after AddComponent/Awake have already succeeded, so
-    // whichever of these throws can't take the whole plugin down with
-    // it. This isolates which dependency assembly is actually failing
-    // to load on this very old Unity/Mono runtime.
-    Invoke("SelfTestWebSocketSharp", 2.1f);
   }
 
   private static void ModifyNumberPrefix(object[] __args)
@@ -484,7 +493,7 @@ public class MBMod : BaseUnityPlugin
   /// in slot_data.AP_LOCATION_IDS, skips it if already checked or unmapped,
   /// and sends the LocationChecks packet if the client is authenticated.
   /// </summary>
-  private static void SendNewLocationCheck(string name)
+  internal static void SendNewLocationCheck(string name)
   {
     if (ApClient == null || ApClient.SlotData == null)
     {
@@ -601,59 +610,52 @@ public class MBMod : BaseUnityPlugin
 
     Log.LogInfo(Json.Serialize(UnlockedLevels));
     Log.LogInfo(key);
-    if (key == "WeaponMachineGun")
-    {
-      // 2
-    }
-    if (key == "WeaponRocketLauncher")
-    {
-      // 2
-    }
-    if (key == "WeaponMultiplyCone")
-    {
-      // 2
-    }
-
     if (key == "SnowballWeapon")
     {
       if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weapon:SnowballWeapon");
+        SendNewLocationCheck("level" + Application.loadedLevel + " - weaponCheck:SnowballWeapon");
       return true;
     }
     else if (key == "WeaponMachineGun")
     {
       if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weapon:WeaponMachineGun");
+        SendNewLocationCheck("level" + Application.loadedLevel + " - weaponCheck:WeaponMachineGun");
       return true;
     }
     else if (key == "WeaponRocketLauncher")
     {
       if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weapon:WeaponRocketLauncher");
+        SendNewLocationCheck(
+          "level" + Application.loadedLevel + " - weaponCheck:WeaponRocketLauncher"
+        );
       return true;
     }
     else if (key == "WeaponSword")
     {
       if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weapon:WeaponSword");
+        SendNewLocationCheck("level" + Application.loadedLevel + " - weaponCheck:WeaponSword");
       return true;
     }
     else if (key == "WeaponMultiplyCone")
     {
       if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weapon:WeaponMultiplyCone");
+        SendNewLocationCheck(
+          "level" + Application.loadedLevel + " - weaponCheck:WeaponMultiplyCone"
+        );
       return true;
     }
     else if (key == "WeaponFactorHammer")
     {
       if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weapon:WeaponFactorHammer");
+        SendNewLocationCheck(
+          "level" + Application.loadedLevel + " - weaponCheck:WeaponFactorHammer"
+        );
       return true;
     }
     else if (key == "MagnetWeapon")
     {
       if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weapon:MagnetWeapon");
+        SendNewLocationCheck("level" + Application.loadedLevel + " - weaponCheck:MagnetWeapon");
       return true;
     }
     else if (!TryGetLevelKey(key, out level))
@@ -848,6 +850,58 @@ public static class PlayerNumberController_GiveAllWeaponsCheat_Patch
   }
 }
 
+/// <summary>
+/// Gates weapon pickups behind MBMod.unlockedWeapons. If the pickup's
+/// weapon hasn't been unlocked (e.g. via Archipelago item receipt),
+/// PlayerHitObject is skipped entirely so the weapon is not given
+/// and the pickup object is left untouched.
+/// </summary>
+[HarmonyPatch(typeof(PlayerNumberController), "PlayerHitObject")]
+public static class PlayerNumberController_PlayerHitObject_Patch
+{
+  // Maps the pickup GameObject's name to the PlayerPrefs/unlock key
+  // used for that weapon.
+  private static readonly Dictionary<string, string> WeaponPickupKeys = new Dictionary<
+    string,
+    string
+  >
+  {
+    { "Snowball", "SnowballWeapon" },
+    { "weapon:WeaponMachineGun", "WeaponMachineGun" },
+    { "weapon:WeaponFactorHammer", "WeaponRocketLauncher" },
+    { "weapon:WeaponSword", "WeaponSword" },
+    { "weapon:WeaponMultiplyCone", "WeaponMultiplyCone" },
+    { "weapon:WeaponRocketLauncher", "WeaponFactorHammer" },
+    { "MagnetWeapon", "MagnetWeapon" },
+  };
+
+  public static bool Prefix(GameObject hitObj)
+  {
+    if (hitObj == null)
+      return true;
+
+    string weaponKey;
+    if (WeaponPickupKeys.TryGetValue(hitObj.name, out weaponKey))
+    {
+      if (!MBMod.unlockedWeapons.Contains(weaponKey))
+      {
+        Debug.Log(
+          "[MBMod] Blocked pickup of "
+            + hitObj.name
+            + " - weapon not yet unlocked ("
+            + weaponKey
+            + ")."
+        );
+        // false = skip the original PlayerHitObject entirely.
+        return false;
+      }
+    }
+
+    // Either not a weapon pickup, or already unlocked - run normally.
+    return true;
+  }
+}
+
 [HarmonyPatch(typeof(Powerup_Transcendental), "OnPlayerTouch")]
 public static class Powerup_Transcendental_Patch
 {
@@ -857,8 +911,6 @@ public static class Powerup_Transcendental_Patch
       return;
 
     Debug.Log("[MBMod] Powerup_Transcendental collected - pi!");
-
-    // Example: Send an Archipelago location check when collected
-    SendNewLocationCheck("level" + Application.loadedLevel + " - pi");
+    MBMod.SendNewLocationCheck("level" + Application.loadedLevel + " - pi:pi");
   }
 }

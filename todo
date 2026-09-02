@@ -50,3 +50,5 @@ public class MenuButton_UnlockAll : MenuButton
 
  - call StateChanged when receiving item of type level:
 each pi is a check - lv 4, see if more
+
+make throw a weapon
