@@ -44,7 +44,7 @@ with open('$file', 'w') as f:
   fi
 
   # If it's another type of error or couldn't parse, print output and exit
-  echo "$output"
+  echo "$output" >&2
   cd ~/projects/mbmod/ || exit 1
   exit $ec
 done
