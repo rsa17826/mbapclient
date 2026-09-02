@@ -394,6 +394,7 @@ public class MBMod : BaseUnityPlugin
           || itemName == "weapon:WeaponSword"
           || itemName == "weapon:WeaponMultiplyCone"
           || itemName == "weapon:WeaponRocketLauncher"
+          || itemName == "weapon:throw"
         )
         {
           unlockedWeapons.Add(itemName);
@@ -821,11 +822,12 @@ public static class PlayerNumberController_GiveAllWeaponsCheat_Patch
 [HarmonyPatch(typeof(PlayerNumberController), "PlayerHitObject")]
 public static class PlayerNumberController_PlayerHitObject_Patch
 {
-  public static bool Prefix(GameObject hitObj)
+  public static void Postfix(object __instance, GameObject hitObj)
   {
-    if (hitObj == null || hitObj.name == "Combined")
-      return true;
-    Debug.Log("hitObj.name" + hitObj.name);
+    if (__instance == null || hitObj == null || hitObj.name == "Combined")
+      return;
+    string weaponKey = null;
+
     if (
       hitObj.name == "MachineGun"
       || hitObj.name == "FactorHammer"
@@ -834,19 +836,12 @@ public static class PlayerNumberController_PlayerHitObject_Patch
       || hitObj.name == "RocketLauncher"
     )
     {
+      weaponKey = "weapon:Weapon" + hitObj.name;
       MBMod.SendNewLocationCheck(
         "level" + Application.loadedLevel + " - weaponCheck:Weapon" + hitObj.name
       );
-      if (!MBMod.unlockedWeapons.Contains("weapon:Weapon" + hitObj.name))
-      {
-        Debug.Log(
-          "[MBMod] Blocked pickup of " + hitObj.name + " - weapon not yet unlocked (" + ")."
-        );
-        // false = skip the original PlayerHitObject entirely.
-        return false;
-      }
     }
-    if (
+    else if (
       hitObj.name == "WeaponMachineGun"
       || hitObj.name == "WeaponFactorHammer"
       || hitObj.name == "WeaponSword"
@@ -854,40 +849,89 @@ public static class PlayerNumberController_PlayerHitObject_Patch
       || hitObj.name == "WeaponRocketLauncher"
     )
     {
+      weaponKey = "weapon:" + hitObj.name;
       MBMod.SendNewLocationCheck(
         "level" + Application.loadedLevel + " - weaponCheck:" + hitObj.name
       );
-      if (!MBMod.unlockedWeapons.Contains("weapon:" + hitObj.name))
-      {
-        Debug.Log(
-          "[MBMod] Blocked pickup of " + hitObj.name + " - weapon not yet unlocked (" + ")."
-        );
-        // false = skip the original PlayerHitObject entirely.
-        return false;
-      }
     }
-    if (
+    else if (
       hitObj.name == "WaveWeapon"
       || hitObj.name == "MultiplyWaveWeapon"
       || hitObj.name == "MultiplyWave"
       || hitObj.name == "MultiplyWeapon"
     )
     {
+      weaponKey = "weapon:WeaponMultiplyCone";
       MBMod.SendNewLocationCheck(
         "level" + Application.loadedLevel + " - weaponCheck:WeaponMultiplyCone"
       );
-      if (!MBMod.unlockedWeapons.Contains("weapon:WeaponMultiplyCone"))
-      {
-        Debug.Log(
-          "[MBMod] Blocked pickup of " + hitObj.name + " - weapon not yet unlocked (" + ")."
-        );
-        // false = skip the original PlayerHitObject entirely.
-        return false;
-      }
     }
 
-    // Either not a weapon pickup, or already unlocked - run normally.
-    return true;
+    if (weaponKey != null) // && !MBMod.unlockedWeapons.Contains(weaponKey))
+    {
+      Debug.Log(
+        "[MBMod] Blocked pickup of "
+          + hitObj.name
+          + " - weapon not yet unlocked ("
+          + weaponKey
+          + ")."
+      );
+
+      // Extract weapon number and call EnableWeaponRestrictions if available
+      var type = __instance.GetType();
+      var weaponsField = type.GetField(
+        "weapons",
+        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+      );
+
+      if (weaponsField != null)
+      {
+        var weaponsList = weaponsField.GetValue(__instance) as System.Collections.IList;
+        if (weaponsList != null)
+        {
+          List<int> restrictions = new List<int>();
+          foreach (var weapon in weaponsList)
+          {
+            if (weapon != null)
+            {
+              // Match the weapon based on name or type mapping
+              string weaponTypeName = weapon.GetType().Name;
+              Debug.Log("weaponTypeName - " + weaponTypeName+" - "+weaponKey);
+              if (
+                weaponTypeName.Equals(hitObj.name, StringComparison.OrdinalIgnoreCase)
+                || ("Weapon" + weaponTypeName).Equals(
+                  hitObj.name,
+                  StringComparison.OrdinalIgnoreCase
+                )
+              )
+              {
+                var numField = weapon.GetType().GetField("weaponNumber");
+                Debug.Log("numField" + numField);
+                if (numField != null)
+                {
+                  restrictions.Add((int)numField.GetValue(weapon));
+                }
+              }
+            }
+          }
+
+          if (restrictions.Count > 0)
+          {
+            var enableRestrictionsMethod = type.GetMethod(
+              "EnableWeaponRestrictions",
+              BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+            );
+            if (enableRestrictionsMethod != null)
+            {
+              enableRestrictionsMethod.Invoke(__instance, new object[] { restrictions });
+              Debug.Log(
+                "[MBMod] Called EnableWeaponRestrictions for locked pickup: " + hitObj.name
+              );
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -917,5 +961,78 @@ public static class MenuButton_Screen_Patch
     }
 
     return true; // Proceed normally if connected
+  }
+}
+
+[HarmonyPatch(typeof(PlayerNumberController), "Start")]
+public static class PlayerNumberController_Start_Patch
+{
+  public static void Postfix(object __instance)
+  {
+    if (__instance == null)
+      return;
+
+    var type = __instance.GetType();
+    var weaponsField = type.GetField(
+      "weapons",
+      BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+    );
+    if (weaponsField == null)
+      return;
+
+    var weaponsList = weaponsField.GetValue(__instance) as System.Collections.IList;
+    if (weaponsList == null)
+      return;
+
+    // 1. If "weapon:throw" is not unlocked, use EnableWeaponRestrictions to restrict ThrowWeapon (assuming its weaponNumber is tracked or handled, or pass restrictions)
+    if (!MBMod.unlockedWeapons.Contains("weapon:throw"))
+    {
+      // Find the weapon number for ThrowWeapon or collect restrictions
+      List<int> restrictions = new List<int>();
+      foreach (var weapon in weaponsList)
+      {
+        if (weapon != null && weapon.GetType().Name == "ThrowWeapon")
+        {
+          var numField = weapon.GetType().GetField("weaponNumber");
+          if (numField != null)
+          {
+            restrictions.Add((int)numField.GetValue(weapon));
+          }
+        }
+      }
+
+      if (restrictions.Count > 0)
+      {
+        var enableRestrictionsMethod = type.GetMethod(
+          "EnableWeaponRestrictions",
+          BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+        );
+        if (enableRestrictionsMethod != null)
+        {
+          enableRestrictionsMethod.Invoke(__instance, new object[] { restrictions });
+          Debug.Log("[MBMod] Called EnableWeaponRestrictions for ununlocked ThrowWeapon.");
+        }
+      }
+    }
+
+    if (weaponsList.Count == 1)
+    {
+      var snowballWeaponType = AccessTools.TypeByName("SnowballWeapon");
+      if (snowballWeaponType != null)
+      {
+        var snowballWeaponInstance = Activator.CreateInstance(snowballWeaponType);
+        weaponsList.Add(snowballWeaponInstance);
+        Debug.Log("[MBMod] No weapons remaining; added SnowballWeapon as fallback.");
+
+        var selectWeaponMethod = type.GetMethod(
+          "SelectWeapon",
+          BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+        );
+        if (selectWeaponMethod != null)
+        {
+          selectWeaponMethod.Invoke(__instance, new object[] { 0 });
+        }
+      }
+    }
   }
 }
