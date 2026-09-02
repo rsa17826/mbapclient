@@ -805,21 +805,21 @@ public static class PlayerNumberController_PlayerHitObject_Patch
 {
   public static bool Prefix(GameObject hitObj)
   {
-    if (hitObj == null)
+    if (hitObj == null || hitObj.name == "Combined")
       return true;
-
+    Debug.Log("hitObj.name" + hitObj.name);
     if (
-      hitObj.name == "WeaponMachineGun"
-      || hitObj.name == "WeaponFactorHammer"
-      || hitObj.name == "WeaponSword"
-      || hitObj.name == "WeaponMultiplyCone"
-      || hitObj.name == "WeaponRocketLauncher"
+      hitObj.name == "MachineGun"
+      || hitObj.name == "FactorHammer"
+      || hitObj.name == "Sword"
+      || hitObj.name == "MultiplyCone"
+      || hitObj.name == "RocketLauncher"
     )
     {
       MBMod.SendNewLocationCheck(
-        "level" + Application.loadedLevel + " - weaponCheck:" + hitObj.name
+        "level" + Application.loadedLevel + " - weaponCheck:Weapon" + hitObj.name
       );
-      if (!MBMod.unlockedWeapons.Contains("weaponCheck:" + hitObj.name))
+      if (!MBMod.unlockedWeapons.Contains("weapon:Weapon" + hitObj.name))
       {
         Debug.Log(
           "[MBMod] Blocked pickup of " + hitObj.name + " - weapon not yet unlocked (" + ")."
