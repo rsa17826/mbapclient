@@ -803,33 +803,32 @@ public static class PlayerNumberController_GiveAllWeaponsCheat_Patch
 [HarmonyPatch(typeof(PlayerNumberController), "PlayerHitObject")]
 public static class PlayerNumberController_PlayerHitObject_Patch
 {
-  // Maps the pickup GameObject's name to the PlayerPrefs/unlock key
-  // used for that weapon.
-  private static readonly Dictionary<string, string> WeaponPickupKeys = new Dictionary<
-    string,
-    string
-  >
-  {
-    { "Snowball", "SnowballWeapon" },
-    { "weapon:WeaponMachineGun", "WeaponMachineGun" },
-    { "weapon:WeaponFactorHammer", "WeaponRocketLauncher" },
-    { "weapon:WeaponSword", "WeaponSword" },
-    { "weapon:WeaponMultiplyCone", "WeaponMultiplyCone" },
-    { "weapon:WeaponRocketLauncher", "WeaponFactorHammer" },
-    { "MagnetWeapon", "MagnetWeapon" },
-  };
-
   public static bool Prefix(GameObject hitObj)
   {
     if (hitObj == null)
       return true;
-
     string weaponKey;
-    if (WeaponPickupKeys.TryGetValue(hitObj.name, out weaponKey))
+
+    if (
+      hitObj.name == "WeaponMachineGun"
+      || hitObj.name == "WeaponFactorHammer"
+      || hitObj.name == "WeaponSword"
+      || hitObj.name == "WeaponMultiplyCone"
+      || hitObj.name == "WeaponRocketLauncher"
+    )
     {
       MBMod.SendNewLocationCheck(
         "level" + Application.loadedLevel + " - weaponCheck:" + hitObj.name
       );
+      Debug.Log(
+        "[MBMod] Blocked pickup of "
+          + hitObj.name
+          + " - asdasdasdasdasdasdasdweapon not yet unlocked ("
+          + weaponKey
+          + ")."
+      );
+      Debug.Log(MBMod.unlockedWeapons);
+
       if (!MBMod.unlockedWeapons.Contains(weaponKey))
       {
         Debug.Log(
