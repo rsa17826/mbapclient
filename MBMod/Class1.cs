@@ -28,7 +28,7 @@ public class MBMod : BaseUnityPlugin
   {
     if (Input.GetKeyDown(KeyCode.F10))
     {
-      GameObject egg = GameObject.Find("easter egg");
+      GameObject egg = GameObject.Find("Snowball");
       if (egg != null)
       {
         Debug.Log(egg.transform.position + " GameObject.Find('easter egg').position");
@@ -164,6 +164,11 @@ public class MBMod : BaseUnityPlugin
       "SetInt",
       new Type[] { typeof(string), typeof(int) }
     );
+    MethodInfo getint = AccessTools.Method(
+      typeof(PlayerPrefs),
+      "GetInt",
+      new Type[] { typeof(string), typeof(int) }
+    );
 
     MethodInfo hasKey = AccessTools.Method(
       typeof(PlayerPrefs),
@@ -181,6 +186,7 @@ public class MBMod : BaseUnityPlugin
         setInt,
         prefix: new HarmonyMethod(typeof(MBMod), nameof(PlayerPrefsSetIntPrefix))
       );
+      harmony.Patch(getint, prefix: new HarmonyMethod(typeof(MBMod), nameof(getintPrefix)));
 
       Log.LogInfo("Patched PlayerPrefs.SetInt");
     }
@@ -308,6 +314,7 @@ public class MBMod : BaseUnityPlugin
       {
         ui.SetStatus("Connected!");
         client.MarkPlayerLoaded(); // TODO
+        // SendNewLocationCheck("weapon:throw");
         SendNewLocationCheck("menu - level:level1");
       };
       client.OnGiveItem += (itemName, item) =>
@@ -629,6 +636,17 @@ public class MBMod : BaseUnityPlugin
     return true;
   }
 
+  private static bool getintPrefix(string key, int defaultValue, ref int __result)
+  {
+    // Debug.Log("asasaaaa " + key + " ");
+    // if (key == "WeaponVacuum")
+    // {
+    //   __result = 1;
+    //   return false;
+    // }
+    return true;
+  }
+
   /*
    * Intercepts:
    *
@@ -820,6 +838,45 @@ public static class PlayerNumberController_PlayerHitObject_Patch
         "level" + Application.loadedLevel + " - weaponCheck:Weapon" + hitObj.name
       );
       if (!MBMod.unlockedWeapons.Contains("weapon:Weapon" + hitObj.name))
+      {
+        Debug.Log(
+          "[MBMod] Blocked pickup of " + hitObj.name + " - weapon not yet unlocked (" + ")."
+        );
+        // false = skip the original PlayerHitObject entirely.
+        return false;
+      }
+    }
+    if (
+      hitObj.name == "WeaponMachineGun"
+      || hitObj.name == "WeaponFactorHammer"
+      || hitObj.name == "WeaponSword"
+      || hitObj.name == "WeaponMultiplyCone"
+      || hitObj.name == "WeaponRocketLauncher"
+    )
+    {
+      MBMod.SendNewLocationCheck(
+        "level" + Application.loadedLevel + " - weaponCheck:" + hitObj.name
+      );
+      if (!MBMod.unlockedWeapons.Contains("weapon:" + hitObj.name))
+      {
+        Debug.Log(
+          "[MBMod] Blocked pickup of " + hitObj.name + " - weapon not yet unlocked (" + ")."
+        );
+        // false = skip the original PlayerHitObject entirely.
+        return false;
+      }
+    }
+    if (
+      hitObj.name == "WaveWeapon"
+      || hitObj.name == "MultiplyWaveWeapon"
+      || hitObj.name == "MultiplyWave"
+      || hitObj.name == "MultiplyWeapon"
+    )
+    {
+      MBMod.SendNewLocationCheck(
+        "level" + Application.loadedLevel + " - weaponCheck:WeaponMultiplyCone"
+      );
+      if (!MBMod.unlockedWeapons.Contains("weapon:WeaponMultiplyCone"))
       {
         Debug.Log(
           "[MBMod] Blocked pickup of " + hitObj.name + " - weapon not yet unlocked (" + ")."
