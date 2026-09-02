@@ -46,26 +46,28 @@ public class PlayerCoordsUI : MonoBehaviour
       Vector3 pos = playerTransform.position;
       string coordText = string.Format("X: {0:F1}  Y: {1:F1}  Z: {2:F1}", pos.x, pos.y, pos.z);
       DrawText(new Rect(_windowRect.x + 10, _windowRect.y + 32, 220, 20), coordText);
-
-      // Calculate distances from player to both points
-      float dist1 = Vector3.Distance(pos, point1);
-      if (!gotEgg1 && dist1 < 10)
+      if (Application.loadedLevel == 5)
       {
-        MBMod.SendNewLocationCheck("level" + Application.loadedLevel + " - egg:47.3 70.1 641.7");
-        gotEgg1 = true;
-      }
-      float dist2 = Vector3.Distance(pos, point2);
-      if (!gotEgg2 && dist2 < 10)
-      {
-        MBMod.SendNewLocationCheck("level" + Application.loadedLevel + " - egg:149.7 18.4 906.0");
-        gotEgg2 = true;
-      }
+        // Calculate distances from player to both points
+        float dist1 = Vector3.Distance(pos, point1);
+        if (!gotEgg1 && dist1 < 10)
+        {
+          MBMod.SendNewLocationCheck("level" + Application.loadedLevel + " - egg:47.3 70.1 641.7");
+          gotEgg1 = true;
+        }
+        float dist2 = Vector3.Distance(pos, point2);
+        if (!gotEgg2 && dist2 < 10)
+        {
+          MBMod.SendNewLocationCheck("level" + Application.loadedLevel + " - egg:149.7 18.4 906.0");
+          gotEgg2 = true;
+        }
 
-      string dist1Text = string.Format("Dist to Pt 1: {0:F1}m", dist1);
-      string dist2Text = string.Format("Dist to Pt 2: {0:F1}m", dist2);
+        string dist1Text = string.Format("Dist to Pt 1: {0:F1}m", dist1);
+        string dist2Text = string.Format("Dist to Pt 2: {0:F1}m", dist2);
 
-      DrawText(new Rect(_windowRect.x + 10, _windowRect.y + 56, 220, 20), dist1Text);
-      DrawText(new Rect(_windowRect.x + 10, _windowRect.y + 80, 220, 20), dist2Text);
+        DrawText(new Rect(_windowRect.x + 10, _windowRect.y + 56, 220, 20), dist1Text);
+        DrawText(new Rect(_windowRect.x + 10, _windowRect.y + 80, 220, 20), dist2Text);
+      }
     }
     else
     {
