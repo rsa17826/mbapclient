@@ -16,7 +16,7 @@ using UnityEngine;
 public class MBMod : BaseUnityPlugin
 {
   // Levels currently unlocked by our mod.
-  public static readonly bool fast = true;
+  public static readonly bool fast = false;
   public static readonly HashSet<int> UnlockedLevels = new HashSet<int>();
   public static HashSet<string> unlockedWeapons = new HashSet<string>();
 
@@ -776,7 +776,19 @@ public static class NumberGenerator_StartPatch
   {
     if (__instance != null)
     {
-      __instance.fireDelay = 0.1f;
+      // Use reflection to check if numbersAreMonsters is false
+      var field = __instance
+        .GetType()
+        .GetField(
+          "numbersAreMonsters",
+          BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+        );
+      bool numbersAreMonsters = field != null && (bool)field.GetValue(__instance);
+
+      if (!numbersAreMonsters)
+      {
+        __instance.fireDelay = 0.1f;
+      }
     }
   }
 }
@@ -1036,6 +1048,20 @@ public static class PlayerNumberController_Start_Patch
           Debug.Log("[MBMod] Called GlobalVars.pnc.SelectWeapon(8).");
         }
       }
+    }
+  }
+}
+
+[HarmonyPatch(typeof(FPSWalkerEnhanced), "Kill")]
+public static class FPSWalkerEnhanced_Kill_Patch
+{
+  public static void Prefix(FPSWalkerEnhanced __instance)
+  {
+    if (__instance != null)
+    {
+      // Instantly zero out the dieTimer so the respawn happens right away
+      __instance.dieTimer = 0f;
+      Debug.Log("[MBMod] Instant respawn triggered via Harmony patch.");
     }
   }
 }
