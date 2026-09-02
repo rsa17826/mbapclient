@@ -460,9 +460,6 @@ public class MBMod : BaseUnityPlugin
       client.Connect();
     };
 
-    // Start with level 1 unlocked, just like the game's
-    // DefaultPlayerPrefs() did.
-    // UnlockedLevels.Add(1);
     harmony.PatchAll();
     Log.LogInfo("Mathbreakers Save Test loaded!");
   }
