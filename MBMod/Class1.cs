@@ -827,11 +827,11 @@ public static class PlayerNumberController_PlayerHitObject_Patch
     string weaponKey;
     if (WeaponPickupKeys.TryGetValue(hitObj.name, out weaponKey))
     {
+      MBMod.SendNewLocationCheck(
+        "level" + Application.loadedLevel + " - weaponCheck:" + hitObj.name
+      );
       if (!MBMod.unlockedWeapons.Contains(weaponKey))
       {
-        MBMod.SendNewLocationCheck(
-          "level" + Application.loadedLevel + " - weaponCheck:" + hitObj.name
-        );
         Debug.Log(
           "[MBMod] Blocked pickup of "
             + hitObj.name
