@@ -807,7 +807,6 @@ public static class PlayerNumberController_PlayerHitObject_Patch
   {
     if (hitObj == null)
       return true;
-    string weaponKey;
 
     if (
       hitObj.name == "WeaponMachineGun"
@@ -820,23 +819,10 @@ public static class PlayerNumberController_PlayerHitObject_Patch
       MBMod.SendNewLocationCheck(
         "level" + Application.loadedLevel + " - weaponCheck:" + hitObj.name
       );
-      Debug.Log(
-        "[MBMod] Blocked pickup of "
-          + hitObj.name
-          + " - asdasdasdasdasdasdasdweapon not yet unlocked ("
-          + weaponKey
-          + ")."
-      );
-      Debug.Log(MBMod.unlockedWeapons);
-
-      if (!MBMod.unlockedWeapons.Contains(weaponKey))
+      if (!MBMod.unlockedWeapons.Contains("weaponCheck:" + hitObj.name))
       {
         Debug.Log(
-          "[MBMod] Blocked pickup of "
-            + hitObj.name
-            + " - weapon not yet unlocked ("
-            + weaponKey
-            + ")."
+          "[MBMod] Blocked pickup of " + hitObj.name + " - weapon not yet unlocked (" + ")."
         );
         // false = skip the original PlayerHitObject entirely.
         return false;
