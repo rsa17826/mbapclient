@@ -64,67 +64,67 @@ public class MBMod : BaseUnityPlugin
       }
       Debug.Log("[NodeDumper] === DUMP COMPLETE ===");
     }
-    GameObject player = GameObject.FindWithTag("Player");
-    if (player != null)
-    {
-      var walker = player.GetComponent("FPSWalkerEnhanced");
-      if (walker != null)
-      {
-        var type = walker.GetType();
-        string[] speedFields =
-        {
-          "speed",
-          "walkSpeed",
-          "runSpeed",
-          "moveSpeed",
-          "jumpSpeed",
-          "ySpeed",
-          "gravity",
-        };
+    // GameObject player = GameObject.FindWithTag("Player");
+    // if (player != null)
+    // {
+    //   // var walker = player.GetComponent("FPSWalkerEnhanced");
+    //   // if (walker != null)
+    //   // {
+    //   //   var type = walker.GetType();
+    //   //   string[] speedFields =
+    //   //   {
+    //   //     "speed",
+    //   //     "walkSpeed",
+    //   //     "runSpeed",
+    //   //     "moveSpeed",
+    //   //     "jumpSpeed",
+    //   //     "ySpeed",
+    //   //     "gravity",
+    //   //   };
 
-        if (
-          (float)
-            type.GetField(
-                "walkSpeed",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-              )
-              .GetValue(walker) == 24f
-        ) // Prevent multi-frame stacking
-        {
-          foreach (var fieldName in speedFields)
-          {
-            var field = type.GetField(
-              fieldName,
-              BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            if (field != null && field.FieldType == typeof(float))
-            {
-              float val = (float)field.GetValue(walker);
-              field.SetValue(walker, val * 7f);
-              Debug.Log(
-                string.Format(
-                  "[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}",
-                  fieldName,
-                  val * 4f
-                )
-              );
-            }
-            if (field != null && field.FieldType == typeof(Vector3))
-            {
-              Vector3 val = (Vector3)field.GetValue(walker);
-              field.SetValue(walker, val * 4f);
-              Debug.Log(
-                string.Format(
-                  "[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}",
-                  fieldName,
-                  val * 4f
-                )
-              );
-            }
-          }
-        }
-      }
-    }
+    //   //   if (
+    //   //     (float)
+    //   //       type.GetField(
+    //   //           "walkSpeed",
+    //   //           BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+    //   //         )
+    //   //         .GetValue(walker) == 24f
+    //   //   ) // Prevent multi-frame stacking
+    //   //   {
+    //   //     foreach (var fieldName in speedFields)
+    //   //     {
+    //   //       var field = type.GetField(
+    //   //         fieldName,
+    //   //         BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+    //   //       );
+    //   //       if (field != null && field.FieldType == typeof(float))
+    //   //       {
+    //   //         float val = (float)field.GetValue(walker);
+    //   //         field.SetValue(walker, val * 7f);
+    //   //         Debug.Log(
+    //   //           string.Format(
+    //   //             "[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}",
+    //   //             fieldName,
+    //   //             val * 4f
+    //   //           )
+    //   //         );
+    //   //       }
+    //   //       if (field != null && field.FieldType == typeof(Vector3))
+    //   //       {
+    //   //         Vector3 val = (Vector3)field.GetValue(walker);
+    //   //         field.SetValue(walker, val * 4f);
+    //   //         Debug.Log(
+    //   //           string.Format(
+    //   //             "[MBMod] Quadrupled FPSWalkerEnhanced.{0} to {1}",
+    //   //             fieldName,
+    //   //             val * 4f
+    //   //           )
+    //   //         );
+    //   //       }
+    //   //     }
+    //   //   }
+    //   // }
+    // }
   }
 
   private void Awake()
@@ -583,19 +583,6 @@ public class MBMod : BaseUnityPlugin
     return wallUniqueId;
   }
 
-  private void SelfTestWebSocketSharp()
-  {
-    try
-    {
-      var ws = new WebSocketSharp.WebSocket("ws://127.0.0.1:1");
-      Log.LogInfo("[SelfTest] WebSocketSharp OK: " + ws.GetType().AssemblyQualifiedName);
-    }
-    catch (Exception ex)
-    {
-      Log.LogError("[SelfTest] WebSocketSharp FAILED: " + ex);
-    }
-  }
-
   /*
    * Intercepts:
    *
@@ -610,55 +597,7 @@ public class MBMod : BaseUnityPlugin
 
     Log.LogInfo(Json.Serialize(UnlockedLevels));
     Log.LogInfo(key);
-    if (key == "SnowballWeapon")
-    {
-      if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weaponCheck:SnowballWeapon");
-      return true;
-    }
-    else if (key == "WeaponMachineGun")
-    {
-      if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weaponCheck:WeaponMachineGun");
-      return true;
-    }
-    else if (key == "WeaponRocketLauncher")
-    {
-      if (value == 1)
-        SendNewLocationCheck(
-          "level" + Application.loadedLevel + " - weaponCheck:WeaponRocketLauncher"
-        );
-      return true;
-    }
-    else if (key == "WeaponSword")
-    {
-      if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weaponCheck:WeaponSword");
-      return true;
-    }
-    else if (key == "WeaponMultiplyCone")
-    {
-      if (value == 1)
-        SendNewLocationCheck(
-          "level" + Application.loadedLevel + " - weaponCheck:WeaponMultiplyCone"
-        );
-      return true;
-    }
-    else if (key == "WeaponFactorHammer")
-    {
-      if (value == 1)
-        SendNewLocationCheck(
-          "level" + Application.loadedLevel + " - weaponCheck:WeaponFactorHammer"
-        );
-      return true;
-    }
-    else if (key == "MagnetWeapon")
-    {
-      if (value == 1)
-        SendNewLocationCheck("level" + Application.loadedLevel + " - weaponCheck:MagnetWeapon");
-      return true;
-    }
-    else if (!TryGetLevelKey(key, out level))
+    if (!TryGetLevelKey(key, out level))
     {
       // Not one of our keys.
       // Let Unity handle it normally.
@@ -885,6 +824,7 @@ public static class PlayerNumberController_PlayerHitObject_Patch
     {
       if (!MBMod.unlockedWeapons.Contains(weaponKey))
       {
+        SendNewLocationCheck("level" + Application.loadedLevel + " - weaponCheck:" + hitObj.name);
         Debug.Log(
           "[MBMod] Blocked pickup of "
             + hitObj.name
