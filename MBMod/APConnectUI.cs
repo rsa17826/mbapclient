@@ -37,6 +37,7 @@ public class APConnectUI : MonoBehaviour
     string playerName,
     string password
   );
+  private bool first = true;
   public event ConnectRequestedHandler OnConnectRequested;
 
   // Toggle with a hotkey so it doesn't sit on screen once connected.
@@ -176,8 +177,9 @@ public class APConnectUI : MonoBehaviour
     _password = DrawTextField(new Rect(90, 126, 230, 20), _password, true);
 
     var buttonRect = new Rect(90, 156, 150, 30);
-    if (GUI.Button(buttonRect, "", _invisibleButtonStyle))
+    if (GUI.Button(buttonRect, "", _invisibleButtonStyle) || first)
     {
+      first = false;
       TryConnect();
     }
     DrawTextCentered(buttonRect, "Connect");
@@ -191,7 +193,6 @@ public class APConnectUI : MonoBehaviour
   }
 
   // ---- text-as-texture drawing helpers ----
-
   private void DrawText(Rect rect, string text)
   {
     var tex = TextRasterizer.GetTexture(text, FontScale, TextColor);

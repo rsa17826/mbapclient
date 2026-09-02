@@ -16,12 +16,12 @@ using UnityEngine;
 public class MBMod : BaseUnityPlugin
 {
   // Levels currently unlocked by our mod.
-  private static readonly bool fast = true;
-  private static readonly HashSet<int> UnlockedLevels = new HashSet<int>();
+  public static readonly bool fast = true;
+  public static readonly HashSet<int> UnlockedLevels = new HashSet<int>();
   public static HashSet<string> unlockedWeapons = new HashSet<string>();
 
-  private static ManualLogSource Log;
-  private static ArchipelagoClient ApClient;
+  public static ManualLogSource Log;
+  public static ArchipelagoClient ApClient;
   public KeyCode DumpKey = KeyCode.F9;
 
   private void Update()
@@ -859,5 +859,21 @@ public static class Powerup_Transcendental_Patch
 
     Debug.Log("[MBMod] Powerup_Transcendental collected - pi!");
     MBMod.SendNewLocationCheck("level" + Application.loadedLevel + " - pi:pi");
+  }
+}
+
+[HarmonyPatch(typeof(MenuButton_Screen), "MouseDown")]
+public static class MenuButton_Screen_Patch
+{
+  public static bool Prefix(MenuButton_Screen __instance)
+  {
+    // Only allow the menu screen action if the Archipelago client is connected and authenticated
+    if (MBMod.ApClient == null || !MBMod.ApClient.IsAuthenticated)
+    {
+      Debug.Log("[MBMod] MenuButton_Screen blocked - Archipelago client not connected.");
+      return false; // Skip original MouseDown execution
+    }
+
+    return true; // Proceed normally if connected
   }
 }
