@@ -1,15 +1,11 @@
 using System;
-using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using ArchipelagoNet;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
-using HarmonyLib;
-using UnityEngine;
 using UnityEngine;
 
 [BepInPlugin("nyix.mathbreakers.saves", "Mathbreakers Save Test", "1.0.0")]
@@ -666,20 +662,20 @@ public class MBMod : BaseUnityPlugin
 
     Log.LogInfo("[SAVE] Game requested unlock: " + key + " = " + value);
 
-    if (value != 0)
-    {
-      if (level == 1)
-        SendNewLocationCheck("menu - level:level" + level);
-      else
-        SendNewLocationCheck("level" + (level - 1) + " - level:level" + level);
-      // UnlockedLevels.Add(level);
+    // if (value != 0)
+    // {
+    //   if (level == 1)
+    //     SendNewLocationCheck("menu - level:level" + level);
+    //   else
+    //     SendNewLocationCheck("level" + (level - 1) + " - level:level" + level);
+    //   // UnlockedLevels.Add(level);
 
-      Log.LogInfo("[SAVE] Level " + level + " unlocked in mod save.");
-    }
-    else
-    {
-      Log.LogInfo("[SAVE] Level " + level + " locked in mod save.");
-    }
+    //   Log.LogInfo("[SAVE] Level " + level + " unlocked in mod save.");
+    // }
+    // else
+    // {
+    //   Log.LogInfo("[SAVE] Level " + level + " locked in mod save.");
+    // }
 
     // false = don't execute the original PlayerPrefs.SetInt().
     return true;
@@ -737,17 +733,12 @@ public class MBMod : BaseUnityPlugin
   private static bool TryGetLevelKey(string key, out int level)
   {
     const string prefix = "unlockedLevel";
-
     level = 0;
-
     if (key == null)
       return false;
-
     if (!key.StartsWith(prefix, StringComparison.Ordinal))
       return false;
-
     string number = key.Substring(prefix.Length);
-
     return int.TryParse(number, out level);
   }
 
@@ -1062,6 +1053,28 @@ public static class FPSWalkerEnhanced_Kill_Patch
       // Instantly zero out the dieTimer so the respawn happens right away
       __instance.dieTimer = 0f;
       Debug.Log("[MBMod] Instant respawn triggered via Harmony patch.");
+    }
+  }
+}
+
+[HarmonyPatch(typeof(EndLevelTrigger), "OnTriggerEnter")]
+public static class EndLevelTrigger_OnTriggerEnter_Patch
+{
+  // Inject the 'other' parameter and the private 'timeout' field (using ___)
+  public static void Prefix(EndLevelTrigger __instance, Collider other, float ___timeout)
+  {
+    if (__instance != null)
+    {
+      // Replicate the original trigger condition
+      if (___timeout < 0f && other.tag == "Player")
+      {
+        // Store the level integers to prevent accidental string concatenation issues
+        int currentLevel = Application.loadedLevel;
+        int nextLevel = currentLevel + 1;
+
+        // Call your custom method
+        MBMod.SendNewLocationCheck("level" + currentLevel + " - level:level" + nextLevel);
+      }
     }
   }
 }
