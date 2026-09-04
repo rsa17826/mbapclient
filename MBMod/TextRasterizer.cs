@@ -22,8 +22,17 @@ public static class TextRasterizer
   private const int GlyphHeight = 7;
   private const int GlyphSpacing = 1;
 
+  // Cache is bounded: callers that render highly volatile strings (e.g.
+  // per-frame coordinate text) would otherwise mint a brand-new Texture2D
+  // every frame forever, since Mono's GC never reclaims native texture
+  // memory and nothing here was ever calling Destroy(). Once the cache
+  // hits _maxCacheEntries, the oldest entries are evicted and destroyed.
+  private const int _maxCacheEntries = 256;
   private static readonly Dictionary<string, Texture2D> _cache =
     new Dictionary<string, Texture2D>();
+  private static readonly LinkedList<string> _lru = new LinkedList<string>();
+  private static readonly Dictionary<string, LinkedListNode<string>> _lruNodes =
+    new Dictionary<string, LinkedListNode<string>>();
   private static readonly Dictionary<char, byte[]> _font = BuildFont();
 
   public static Texture2D GetTexture(string text, int scale, Color color)
@@ -37,11 +46,44 @@ public static class TextRasterizer
 
     Texture2D cached;
     if (_cache.TryGetValue(key, out cached) && cached != null)
+    {
+      Touch(key);
       return cached;
+    }
 
     var tex = Render(text, scale, color);
     _cache[key] = tex;
+    Touch(key);
+    EvictIfNeeded();
     return tex;
+  }
+
+  private static void Touch(string key)
+  {
+    LinkedListNode<string> node;
+    if (_lruNodes.TryGetValue(key, out node))
+    {
+      _lru.Remove(node);
+    }
+    _lruNodes[key] = _lru.AddLast(key);
+  }
+
+  private static void EvictIfNeeded()
+  {
+    while (_cache.Count > _maxCacheEntries)
+    {
+      var oldestNode = _lru.First;
+      var oldestKey = oldestNode.Value;
+      _lru.RemoveFirst();
+      _lruNodes.Remove(oldestKey);
+
+      Texture2D oldTex;
+      if (_cache.TryGetValue(oldestKey, out oldTex))
+      {
+        _cache.Remove(oldestKey);
+        UnityEngine.Object.Destroy(oldTex);
+      }
+    }
   }
 
   private static Texture2D Render(string text, int scale, Color color)
@@ -108,7 +150,11 @@ public static class TextRasterizer
   /// <summary>Clears the texture cache (e.g. if you want to force a re-render).</summary>
   public static void ClearCache()
   {
+    foreach (var tex in _cache.Values)
+      UnityEngine.Object.Destroy(tex);
     _cache.Clear();
+    _lru.Clear();
+    _lruNodes.Clear();
   }
 
   // Standard 5x7 glyph table (classic "glcdfont" layout used across many
