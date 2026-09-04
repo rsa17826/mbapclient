@@ -778,7 +778,7 @@ public static class NumberGenerator_StartPatch
 
       if (!numbersAreMonsters)
       {
-        __instance.fireDelay = 0.1f;
+        __instance.fireDelay = 0.5f;
       }
     }
   }
