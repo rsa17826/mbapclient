@@ -11,3 +11,5 @@ mathbreakers/*
 **/obj/**
 *.7z
 *.zip
+**/node_modules
+node_modules
