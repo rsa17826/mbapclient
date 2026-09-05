@@ -37,7 +37,7 @@ public class APConnectUI : MonoBehaviour
     string playerName,
     string password
   );
-  private bool first = true;
+  private bool first = false;
   public event ConnectRequestedHandler OnConnectRequested;
 
   // Toggle with a hotkey so it doesn't sit on screen once connected.

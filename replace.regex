@@ -6,7 +6,7 @@
 @endregex
 
 @file \.cs$
-@regex private string _host = "archipelago.gg";
+@regex private string _host = "archipelago\.gg";
 @replace private string _host = "ap.localhost";
 @endregex
 @regex private string _port = "38281";
@@ -27,9 +27,11 @@
 @regex field\.SetValue\(walker, val \* 2f\);
 @replace field.SetValue(walker, val * 4f);
 @endregex
-@regex UseWss = true;
-@replace UseWss = false;
-@endregex
+! @regex UseWss = true;
+! @replace UseWss = false;
+! @endregex
+
+
 
 
 
