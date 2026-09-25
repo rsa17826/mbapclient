@@ -1,79 +1,203 @@
-// ap-proxy: local WebSocket relay for game clients whose bundled Mono/TLS
-// stack can't negotiate TLS 1.2+ (e.g. old Unity mono.dll).
+// ap-proxy.js
 //
-// The game connects to ws://127.0.0.1:<localPort> (no TLS, so the ancient
-// Mono.Security stack never has to touch a modern handshake). This process
-// makes the real wss:// connection to the Archipelago server using Node's
-// TLS stack and pipes frames through unmodified in both directions.
+// Local WebSocket relay for old Unity/Mono clients.
+//
+// Game:
+//   ws://127.0.0.1:<localPort>
+//
+// Proxy:
+//   wss://<Archipelago server>:38281
 //
 // Usage:
-//   node proxy.js <localPort> <remoteWssUrl>
-//
-// Example:
-//   node proxy.js 38281 wss://archipelago.gg:38281
+//   node ap-proxy.js 38281 wss://archipelago.gg:38281
 
-const WebSocket = require("ws");
+const WebSocket = require("ws")
 
-const localPort = process.argv[2];
-const remoteUrl = process.argv[3];
+const localPort = Number(process.argv[2])
+const remoteUrl = process.argv[3]
 
 if (!localPort || !remoteUrl) {
-  console.error("Usage: node proxy.js <localPort> <remoteWssUrl>");
-  console.error("Example: node proxy.js 38281 wss://archipelago.gg:38281");
-  process.exit(1);
+  console.error("Usage: node ap-proxy.js <localPort> <remoteWssUrl>")
+  console.error("Example:")
+  console.error("  node ap-proxy.js 38281 wss://archipelago.gg:38281")
+  process.exit(1)
 }
 
-const wss = new WebSocket.Server({ port: Number(localPort) }, () => {
-  console.log(`Listening on ws://127.0.0.1:${localPort}`);
-  console.log(`Relaying to ${remoteUrl}`);
-});
+const server = new WebSocket.Server({
+  host: "127.0.0.1",
+  port: localPort,
+})
 
-wss.on("connection", (clientSocket) => {
-  console.log("Game client connected.");
+server.on("listening", () => {
+  console.log(`Listening on ws://127.0.0.1:${localPort}`)
+  console.log(`Relaying to ${remoteUrl}`)
+})
 
-  // Queue frames that arrive from the game before the upstream connection
-  // to the real server is open.
-  const pending = [];
-  let upstreamOpen = false;
+server.on("error", (err) => {
+  console.error("[Proxy] Server error:", err)
+})
 
-  const upstream = new WebSocket(remoteUrl);
+server.on("connection", (clientSocket, request) => {
+  console.log("[Proxy] Game client connected.")
+
+  let upstreamOpen = false
+  let closing = false
+
+  const pending = []
+
+  const upstream = new WebSocket(remoteUrl, {
+    perMessageDeflate: false,
+  })
+
+  function closeBoth(code, reason) {
+    if (closing) return
+
+    closing = true
+
+    console.log(
+      `[Proxy] Closing connection. code=${code} reason=${reason || ""}`,
+    )
+
+    // Do not send invalid WebSocket close codes.
+    const validCode =
+      code >= 1000 &&
+      code <= 1015 &&
+      code !== 1004 &&
+      code !== 1005 &&
+      code !== 1006
+
+    const closeCode = validCode ? code : 1000
+
+    if (clientSocket.readyState === WebSocket.OPEN) {
+      try {
+        clientSocket.close(closeCode, reason || "")
+      } catch (e) {
+        console.error("[Proxy] Error closing client:", e.message)
+      }
+    } else if (clientSocket.readyState !== WebSocket.CLOSED) {
+      clientSocket.terminate()
+    }
+
+    if (upstream.readyState === WebSocket.OPEN) {
+      try {
+        upstream.close(closeCode, reason || "")
+      } catch (e) {
+        console.error("[Proxy] Error closing upstream:", e.message)
+      }
+    } else if (
+      upstream.readyState !== WebSocket.CLOSED &&
+      upstream.readyState !== WebSocket.CLOSING
+    ) {
+      upstream.terminate()
+    }
+  }
 
   upstream.on("open", () => {
-    console.log("Upstream connection established.");
-    upstreamOpen = true;
-    for (const frame of pending) upstream.send(frame.data, { binary: frame.isBinary });
-    pending.length = 0;
-  });
+    console.log("[Proxy] Upstream connection established.")
+
+    upstreamOpen = true
+
+    while (pending.length > 0) {
+      const frame = pending.shift()
+
+      if (upstream.readyState !== WebSocket.OPEN) break
+
+      try {
+        upstream.send(frame.data, {
+          binary: frame.isBinary,
+        })
+      } catch (e) {
+        console.error(
+          "[Proxy] Failed to flush queued frame:",
+          e.message,
+        )
+        closeBoth(1011, "Proxy send failure")
+        return
+      }
+    }
+  })
 
   upstream.on("message", (data, isBinary) => {
-    if (clientSocket.readyState === WebSocket.OPEN)
-      clientSocket.send(data, { binary: isBinary });
-  });
+    if (clientSocket.readyState !== WebSocket.OPEN) return
+
+    try {
+      clientSocket.send(data, {
+        binary: isBinary,
+      })
+    } catch (e) {
+      console.error("[Proxy] Failed sending to game:", e.message)
+      closeBoth(1011, "Proxy send failure")
+    }
+  })
 
   upstream.on("close", (code, reason) => {
-    console.log(`Upstream closed. Code: ${code} Reason: ${reason}`);
-    if (clientSocket.readyState === WebSocket.OPEN) clientSocket.close(code);
-  });
+    upstreamOpen = false
+
+    const reasonText = reason ? reason.toString() : ""
+
+    console.log(
+      `[Proxy] Upstream closed. Code=${code} Reason=${reasonText}`,
+    )
+
+    if (!closing) {
+      closeBoth(code, reasonText)
+    }
+  })
 
   upstream.on("error", (err) => {
-    console.error("Upstream error: " + err.message);
-  });
+    console.error("[Proxy] Upstream error:", err.message)
+
+    // The close event normally follows this.
+    // Do not independently tear everything down twice.
+  })
 
   clientSocket.on("message", (data, isBinary) => {
-    if (upstreamOpen) upstream.send(data, { binary: isBinary });
-    else pending.push({ data, isBinary });
-  });
+    if (closing) return
+
+    if (upstreamOpen && upstream.readyState === WebSocket.OPEN) {
+      try {
+        upstream.send(data, {
+          binary: isBinary,
+        })
+      } catch (e) {
+        console.error(
+          "[Proxy] Failed sending to upstream:",
+          e.message,
+        )
+        closeBoth(1011, "Proxy send failure")
+      }
+
+      return
+    }
+
+    // Upstream TLS/WebSocket handshake has not completed yet.
+    pending.push({
+      data: data,
+      isBinary: isBinary,
+    })
+  })
 
   clientSocket.on("close", (code, reason) => {
-    console.log(`Game client disconnected. Code: ${code} Reason: ${reason}`);
-    upstream.close();
-  });
+    const reasonText = reason ? reason.toString() : ""
+
+    console.log(
+      `[Proxy] Game client disconnected. Code=${code} Reason=${reasonText}`,
+    )
+
+    if (!closing) {
+      closing = true
+      upstreamOpen = false
+
+      if (
+        upstream.readyState !== WebSocket.CLOSED &&
+        upstream.readyState !== WebSocket.CLOSING
+      ) {
+        upstream.close(1000, "Game client disconnected")
+      }
+    }
+  })
 
   clientSocket.on("error", (err) => {
-    console.error("Game client socket error: " + err.message);
-  });
-});
-
-wss.on("error", (err) => {
-  console.error("Local server error: " + err.message);
-});
+    console.error("[Proxy] Game client socket error:", err.message)
+  })
+})

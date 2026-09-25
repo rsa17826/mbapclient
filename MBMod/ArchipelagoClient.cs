@@ -53,7 +53,6 @@ namespace ArchipelagoNet
     public string PlayerName { get; private set; }
     public string Password { get; private set; }
     public string Url { get; private set; }
-    public bool UseWss { get; private set; }
 
     // ---- Protocol state ----
     public bool IsAuthenticated { get; private set; }
@@ -129,8 +128,7 @@ namespace ArchipelagoNet
       Game = game;
       PlayerName = playerName;
       Password = password ?? "";
-      UseWss = false;
-      Url = BuildUrl(UseWss);
+      Url = "ws://" + Hostname + ":" + Port.Value;
     }
 
     private string BuildUrl(bool wss)
@@ -229,71 +227,106 @@ namespace ArchipelagoNet
     /// is reported via the OnLog/OnConnectedEvent/OnError events.</summary>
     public void Connect()
     {
-      _socket = new WebSocket(Url);
-
-      _socket.OnOpen += (sender, e) =>
-      {
-        Log(
-          "WebSocket connection established ("
-            + Url.Split(':')[0]
-            + "). Awaiting 'RoomInfo' from server..."
-        );
-      };
-
-      _socket.OnMessage += (sender, e) =>
+      // Always create a completely new socket.
+      if (_socket != null)
       {
         try
         {
+          if (_socket.IsAlive)
+            _socket.Close();
+        }
+        catch
+        {
+          // Ignore errors while disposing the previous socket.
+        }
+
+        _socket = null;
+      }
+
+      var socket = new WebSocket(Url);
+      _socket = socket;
+
+      socket.OnOpen += (sender, e) =>
+      {
+        Log("WebSocket connection established (" + Url + "). Awaiting 'RoomInfo' from server...");
+      };
+
+      socket.OnMessage += (sender, e) =>
+      {
+        try
+        {
+          if (e == null)
+            return;
+
+          // websocket-sharp may deliver control frames through OnMessage
+          // depending on the version/build.
+          if (e.IsPing)
+          {
+            Log("Received WebSocket ping.");
+            return;
+          }
+
+          if (string.IsNullOrEmpty(e.Data))
+          {
+            Warn("Received an empty WebSocket message.");
+            return;
+          }
+
           var parsed = Json.Deserialize(e.Data) as List<object>;
+
           if (parsed == null)
           {
-            Error("Expected a JSON array of packets, got something else.");
+            Error("Expected a JSON array of Archipelago packets, got something else: " + e.Data);
             return;
           }
 
           foreach (var packetObj in parsed)
           {
             var packet = AsObj(packetObj);
+
             if (packet != null)
               HandlePacket(packet);
           }
         }
         catch (Exception ex)
         {
-          Error("Failed to parse incoming JSON payload: " + ex.Message);
+          Error(
+            "Failed to process incoming WebSocket message: " + ex.GetType().Name + ": " + ex.Message
+          );
         }
       };
 
-      _socket.OnClose += (sender, e) =>
+      socket.OnClose += (sender, e) =>
       {
-        Warn("[WARNING] Disconnected from Archipelago server. Code: " + e.Code);
+        Warn("[WebSocket] Disconnected. Code: " + e.Code + ", Reason: " + e.Reason);
       };
 
-      _socket.OnError += (sender, e) =>
+      socket.OnError += (sender, e) =>
       {
-        Error("WebSocket network error: " + e.Message);
+        // IMPORTANT:
+        // Do NOT call Connect() from here.
+        //
+        // A websocket-sharp frame-header exception normally means the
+        // underlying stream has already closed or become unusable.
+        // Reconnecting from inside OnError can create overlapping sockets
+        // and additional frame-reader exceptions.
 
-        // If secure connection fails and we haven't shifted to ws:// yet,
-        // flip once and retry (mirrors the JS client's fallback logic).
-        if (!_isFallbackMode)
-        {
-          UseWss = !UseWss;
-          _isFallbackMode = true;
-          Url = BuildUrl(UseWss);
-          Warn("Retrying with " + Url);
+        string message = e.Message;
 
-          // Connect() below creates a brand-new WebSocket instance,
-          // so the old socket's handlers are simply abandoned here
-          // (events can't be cleared with '=' from outside the class).
-          Connect();
-        }
-        else
-        {
-          _isFallbackMode = false;
-        }
+        if (e.Exception != null)
+          message += " (" + e.Exception.GetType().Name + ")";
+
+        Error("[WebSocket] " + message);
       };
 
-      _socket.ConnectAsync();
+      try
+      {
+        socket.ConnectAsync();
+      }
+      catch (Exception ex)
+      {
+        Error("Failed to start WebSocket connection: " + ex.GetType().Name + ": " + ex.Message);
+      }
     }
 
     public void Disconnect()
